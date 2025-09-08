@@ -17,9 +17,9 @@ class FireAlarm extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       routes: {
-        '/': (context) => const HomeScreen(),
-        '/alerts': (context) => const AlertScreen(),
-        '/history': (context) => const HistoryScreen(),
+        '/': (context) => HomeScreen(),
+        '/alerts': (context) => AlertScreen(),
+        '/history': (context) => HistoryScreen(),
         // '/profile': (context) => const ProfileScreen(),
       },
     );

@@ -1,9 +1,11 @@
 import 'package:fire_alarm/widgets/bottom_nav_bar.dart';
+import 'package:fire_alarm/widgets/custom_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:fire_alarm/theme/app_theme.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
 
   @override
   Widget build(BuildContext context) {
@@ -20,8 +22,9 @@ class HomeScreen extends StatelessWidget {
         centerTitle: true,
         backgroundColor: AppTheme.theme.appBarTheme.backgroundColor,
       ),
+      drawer: CustomDrawer(),
       body: Container(
-        decoration: BoxDecoration(gradient: AppTheme.fireGradient),
+        decoration: BoxDecoration(color: Colors.white),
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -30,7 +33,7 @@ class HomeScreen extends StatelessWidget {
               children: [
                 Icon(
                   Icons.fire_extinguisher,
-                  color: Theme.of(context).primaryColor,
+                  color: Theme.of(context).colorScheme.secondary,
                   size: 100,
                 ),
                 const SizedBox(height: 24),
