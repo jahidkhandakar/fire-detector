@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fire_alarm/theme/app_theme.dart';
+import 'package:fire_alarm/others/theme/app_theme.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -14,16 +14,14 @@ class ProfilePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        centerTitle: true,
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       ),
-      body: Container(
-        decoration: BoxDecoration(gradient: AppTheme.fireGradient),
+      body: Container( 
         child: Center(
           child: Card(
             elevation: 4,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.deepOrange, width: 2),
             ),
             margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: Padding(
@@ -49,14 +47,12 @@ class ProfilePage extends StatelessWidget {
                     leading: const Icon(Icons.phone, color: Colors.deepOrange),
                     title: Text(
                       phone,
-                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
                   ListTile(
                     leading: const Icon(Icons.email, color: Colors.deepOrange),
                     title: Text(
                       email,
-                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
                 ],

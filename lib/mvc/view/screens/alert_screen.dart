@@ -25,11 +25,6 @@ class AlertScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Alerts'),
-        backgroundColor: Colors.redAccent,
-        centerTitle: true,
-      ),
       body:
           alerts.isEmpty
               ? const Center(

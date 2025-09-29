@@ -1,8 +1,12 @@
+import 'package:fire_alarm/mvc/view/pages/index_page.dart';
+import 'package:fire_alarm/mvc/view/pages/profile_page.dart';
+import 'package:fire_alarm/mvc/view/screens/login_screen.dart';
+import 'package:fire_alarm/others/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'mvc/view/screens/home_screen.dart';
 import 'mvc/view/screens/alert_screen.dart';
 import 'mvc/view/screens/history_screen.dart';
-// import 'mvc/view/screens/profile_screen.dart'; // if you have a profile page
+import 'mvc/view/screens/signup_screen.dart';
 
 void main() {
   runApp(const FireAlarm());
@@ -15,12 +19,16 @@ class FireAlarm extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      initialRoute: '/',
+      theme: AppTheme.theme,
+      initialRoute: '/login',
       routes: {
-        '/': (context) => HomeScreen(),
+        '/index': (context) => IndexPage(),
+        '/home': (context) => HomeScreen(),
         '/alerts': (context) => AlertScreen(),
         '/history': (context) => HistoryScreen(),
-        // '/profile': (context) => const ProfileScreen(),
+        '/login': (context) =>  LoginScreen(),
+        '/signup': (context) => SignupScreen(),
+        '/profile': (context) => ProfilePage(),
       },
     );
   }
