@@ -1,6 +1,9 @@
+import 'package:fire_alarm/mvc/controller/auth_controller.dart';
+import 'package:fire_alarm/others/utils/api.dart';
 import 'package:fire_alarm/others/widgets/auth_button.dart';
 import 'package:flutter/material.dart';
 import 'package:fire_alarm/others/theme/app_theme.dart';
+import 'package:get/get.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,21 +17,53 @@ class _LoginScreenState extends State<LoginScreen> {
   final passwordController = TextEditingController();
 
   bool _obscureText = true;
+  bool _isLoading = false;
+
+  final AuthController authController = AuthController();
+
+  Future<void> _handleLogin() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+
+    final res = await authController.userLogin(
+      api:
+          Api.login, // ensure this is the correct endpoint (often with a trailing slash)
+      mail: emailController.text,
+      pass: passwordController.text,
+    );
+
+    final code = res['statusCode'] as int? ?? 0;
+    final data = res['data'];
+    String message = 'Login failed';
+    if (data is Map) {
+      message = (data['detail'] ?? data['message'] ?? message).toString();
+    } else if (data is String && data.isNotEmpty) {
+      message = data;
+    }
+
+    if (code >= 200 && code < 300) {
+      Get.offAllNamed('/index');
+    } else {
+      // Show backend message like “Invalid login credentials”
+      Get.snackbar('Login', message, snackPosition: SnackPosition.BOTTOM);
+    }
+
+    if (mounted) setState(() => _isLoading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.fireGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.fireGradient),
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(height: 100,),
+                const SizedBox(height: 100),
+
                 // Login Card
                 Card(
                   shape: RoundedRectangleBorder(
@@ -55,6 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Email
                         TextField(
                           controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
                           decoration: const InputDecoration(
                             labelText: "Email",
                             prefixIcon: Icon(Icons.email),
@@ -63,14 +99,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Password with visibility toggle
+                        // Password
                         TextField(
                           controller: passwordController,
                           obscureText: _obscureText,
                           decoration: InputDecoration(
                             labelText: "Password",
-                            prefixIcon: Icon(Icons.lock),
-                            border: OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.lock),
+                            border: const OutlineInputBorder(),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscureText
@@ -78,9 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     : Icons.visibility_off,
                               ),
                               onPressed: () {
-                                setState(() {
-                                  _obscureText = !_obscureText;
-                                });
+                                setState(() => _obscureText = !_obscureText);
                               },
                             ),
                           ),
@@ -91,22 +125,27 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () =>
-                                Navigator.pushNamed(context, "/index"),
-                            child: const Text(
-                              "Login",
-                              style: TextStyle(fontSize: 20),
-                            ),
+                            onPressed: _isLoading ? null : _handleLogin,
+                            child:
+                                _isLoading
+                                    ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                    : const Text("Login"),
                           ),
                         ),
                         const SizedBox(height: 12),
 
                         // Signup Link
-                        AuthButton(
+                        const AuthButton(
                           routeName: "/signup",
                           buttonText: "Sign Up",
                           promptText: "Don’t have an account? ",
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -114,15 +153,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 30),
 
-                // Powered by Logo
+                // Powered by
                 Column(
                   children: [
                     const Text(
                       "Powered by",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 14),
                     ),
                     Image.asset(
                       "assets/icons/pranisheba-tech-logo.png",

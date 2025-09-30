@@ -28,20 +28,3 @@ class BottomNavBar extends StatelessWidget {
     );
   }
 }
-
-void main() {
-  runApp(
-    MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(title: Text('Bottom NavBar Example')),
-        body: Center(child: Text('Content here')),
-        bottomNavigationBar: BottomNavBar(
-          currentIndex: 0,
-          onTap: (index) {
-            // Handle navigation here
-          },
-        ),
-      ),
-    ),
-  );
-}

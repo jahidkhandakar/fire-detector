@@ -1,52 +1,41 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:get_storage/get_storage.dart';
 
 class MethodService {
-  //*_____________________POST___________________________//
-  Future<Map<String, dynamic>> post(String url, Map<String, dynamic> body) async{
-    try{
-      final uri = Uri.parse(url);
-      final payload = jsonEncode(body);
-      final response = await http.post(
-        uri,
-        body: payload
-      );
-      if(response.statusCode == 201){
-        return {
-          "statusCode": response.statusCode,
-          "data": jsonDecode(response.body)
-        };
-      }else{
-        return {
-          "statusCode": response.statusCode,
-          "data": jsonDecode(response.body)
-        };
-      }
-    }catch(e){
-      print("Error: ${e.toString()}");
-      throw Exception("Failed to post data: ${e.toString()}");
-    }
+  final GetStorage _box = GetStorage();
+
+  Map<String, String> _headers() {
+    final token = _box.read<String>('access');
+    return {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
   }
 
-  //*_____________________GET___________________________//
   Future<Map<String, dynamic>> get(String url) async {
-    try {
-      final uri = Uri.parse(url);
-      final response = await http.get(uri);
-      if (response.statusCode == 200) {
-        return {
-          "statusCode": response.statusCode,
-          "data": jsonDecode(response.body)
-        };
-      } else {
-        return {
-          "statusCode": response.statusCode,
-          "data": jsonDecode(response.body)
-        };
-      }
-    } catch (e) {
-      print("Error: ${e.toString()}");
-      throw Exception("Failed to get data: ${e.toString()}");
-    }
+    final uri = Uri.parse(url);
+    final head = _headers();
+    final res = await http
+        .get(uri, headers: head)
+        .timeout(const Duration(seconds: 20));
+
+    if (res.body.isEmpty) return {};
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> post(
+    String url,
+    Map<String, dynamic> body,
+  ) async {
+    final uri = Uri.parse(url);
+    final head = _headers();
+    final payload = jsonEncode(body);
+    final res = await http
+        .post(uri, headers: head, body: payload)
+        .timeout(const Duration(seconds: 20));
+
+    if (res.body.isEmpty) return {};
+    return jsonDecode(res.body) as Map<String, dynamic>;
   }
 }

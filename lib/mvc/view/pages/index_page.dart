@@ -20,6 +20,7 @@ class _IndexPageState extends State<IndexPage> {
     AlertScreen(),
     HistoryScreen(),
   ];
+
   final List<String> _titles = const [
     'Home',
     'Alerts',
@@ -31,10 +32,13 @@ class _IndexPageState extends State<IndexPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),
+        centerTitle: true,
       ),
       drawer: CustomDrawer(),
-      body: _pages[_currentIndex],
-
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
+      ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
         onTap: (index) {

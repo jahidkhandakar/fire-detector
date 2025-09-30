@@ -1,140 +1,170 @@
+import 'package:fire_alarm/mvc/controller/user_controller.dart';
+import 'package:fire_alarm/mvc/model/user_model.dart';
 import 'package:fire_alarm/others/theme/app_theme.dart';
+import 'package:fire_alarm/others/utils/api.dart';
 import 'package:flutter/material.dart';
 
-class CustomDrawer extends StatelessWidget {
-  final String name = "John Doe";
-  final String phone = "+1 234 567 890";
-  final String email = "john.doe@email.com";
-  final String address = "123 Main Street, City, Country";
-  final List<String> emergencyNumbers = ["+1 111 222 3333", "+1 444 555 6666"];
+class CustomDrawer extends StatefulWidget {
+  const CustomDrawer({super.key});
 
-  CustomDrawer({super.key});
+  @override
+  State<CustomDrawer> createState() => _CustomDrawerState();
+}
+
+class _CustomDrawerState extends State<CustomDrawer> {
+  final _user = UserController();
+  late Future<UserModel> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _user.fetchUserDetails(api: Api.userDetails);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      child: Column(
-        children: [
-          //----------------------- Header-------------------------
-          InkWell(
-            onTap: () {
-              Navigator.pushNamed(context, '/profile');
-            },
-            child: Container(
-              decoration: BoxDecoration(gradient: AppTheme.fireGradient),
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              alignment: Alignment.center,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircleAvatar(
-                    radius: 40,
-                    backgroundColor: Colors.deepOrange,
-                    child: Icon(Icons.person, size: 48, color: Colors.white),
+      child: FutureBuilder<UserModel>(
+        future: _future,
+        builder: (context, snapshot) {
+          String name = 'User';
+          String phone = '';
+          String email = '';
+          String role = '';
+
+          final user = snapshot.data;
+          if (snapshot.connectionState == ConnectionState.done && user != null) {
+            email = user.email;
+            phone = user.phoneNumber;
+            name = email.contains('@') ? email.split('@').first : 'User';
+            role = user.role;
+          }
+
+          return Column(
+            children: [
+              // Header
+              InkWell(
+                onTap: () => Navigator.pushNamed(context, '/profile'),
+                child: Container(
+                  decoration: BoxDecoration(gradient: AppTheme.fireGradient),
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.white24,
+                        child: Icon(
+                          Icons.person,
+                          size: 48,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                      if (phone.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          phone,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    phone,
-                    style: const TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
 
-          // Drawer items
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.email, color: Colors.deepOrange),
-                  title: Text(email),
+              // Drawer items
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    if (email.isNotEmpty)
+                      ListTile(
+                        leading: const Icon(
+                          Icons.email,
+                          color: Colors.deepOrange,
+                        ),
+                        title: Text(email),
+                      ),
+                    if (role.isNotEmpty)
+                      ListTile(
+                        leading: const Icon(
+                          Icons.verified_user,
+                          color: Colors.deepOrange,
+                        ),
+                        title: Text('Role: $role'),
+                      ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.book,
+                        color: Colors.deepOrange,
+                      ),
+                      title: const Text("About"),
+                      onTap: () => Navigator.pushNamed(context, '/about'),
+                    ),
+                  ],
                 ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.location_on,
-                    color: Colors.deepOrange,
-                  ),
-                  title: Text(address),
-                ),
-                ExpansionTile(
-                  leading: const Icon(
-                    Icons.phone_in_talk,
-                    color: Colors.deepOrange,
-                  ),
-                  title: const Text("Emergency Numbers"),
-                  children:
-                      emergencyNumbers
-                          .map(
-                            (num) => ListTile(
-                              title: Text(num),
-                              leading: const Icon(
-                                Icons.call,
-                                color: Colors.deepOrange,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: const Icon(Icons.person, color: Colors.deepOrange),
-                  title: Text("About"),
-                  onTap: () => {Navigator.pushNamed(context, '/about')},
-                ),
-              ],
-            ),
-          ),
+              ),
 
-          const Divider(),
+              const Divider(),
 
-          // Logout pinned at bottom
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.redAccent),
-            title: const Text("Logout"),
-            onTap: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder:
-                    (ctx) => AlertDialog(
+              // Logout pinned at bottom
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.redAccent),
+                title: const Text("Logout"),
+                onTap: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
                       title: const Text(
                         "Logout",
                         style: TextStyle(color: Colors.redAccent),
                         textAlign: TextAlign.center,
+                      ),
+                      content: const Text(
+                        "Are you sure you want to logout?",
+                        style: TextStyle(
+                          color: Colors.deepOrange,
+                          fontWeight: FontWeight.w600,
                         ),
-                      content: const Text("Are you sure you want to logout?"),
+                      ),
                       actionsAlignment: MainAxisAlignment.center,
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, false),
                           child: const Text("Cancel"),
                         ),
-                        SizedBox(width: 16),
+                        const SizedBox(width: 16),
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, true),
                           child: const Text("Logout"),
                         ),
                       ],
                     ),
-              );
+                  );
 
-              if (confirm == true && context.mounted) {
-                // later you can add FirebaseAuth.instance.signOut() or prefs.clear() here
-                Navigator.pushReplacementNamed(context, "/login");
-              }
-            },
-          ),
-        ],
+                  if (confirm == true && context.mounted) {
+                    // TODO: call your AuthService.logout() here
+                    Navigator.pushReplacementNamed(context, "/login");
+                  }
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }

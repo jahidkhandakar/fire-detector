@@ -1,35 +1,34 @@
-import 'package:fire_alarm/mvc/view/pages/index_page.dart';
-import 'package:fire_alarm/mvc/view/pages/profile_page.dart';
-import 'package:fire_alarm/mvc/view/screens/login_screen.dart';
-import 'package:fire_alarm/others/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'mvc/view/screens/home_screen.dart';
-import 'mvc/view/screens/alert_screen.dart';
-import 'mvc/view/screens/history_screen.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'others/theme/app_theme.dart';
+import 'mvc/view/pages/index_page.dart';
+import 'mvc/view/pages/profile_page.dart';
+import 'mvc/view/screens/login_screen.dart';
 import 'mvc/view/screens/signup_screen.dart';
 
-void main() {
-  runApp(const FireAlarm());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init();
+  runApp(FireAlarm()); 
 }
 
 class FireAlarm extends StatelessWidget {
-  const FireAlarm({super.key});
+ FireAlarm({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    final hasToken = GetStorage().read<String>('access')?.isNotEmpty == true;
+    return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      initialRoute: '/login',
-      routes: {
-        '/index': (context) => IndexPage(),
-        '/home': (context) => HomeScreen(),
-        '/alerts': (context) => AlertScreen(),
-        '/history': (context) => HistoryScreen(),
-        '/login': (context) =>  LoginScreen(),
-        '/signup': (context) => SignupScreen(),
-        '/profile': (context) => ProfilePage(),
-      },
+      initialRoute: hasToken ? '/index' : '/login',
+      getPages: [
+        GetPage(name: '/login', page: () => LoginScreen()),
+        GetPage(name: '/signup', page: () => SignupScreen()),
+        GetPage(name: '/index', page: () => IndexPage()),
+        GetPage(name: '/profile', page: () => ProfilePage()),
+      ],
     );
   }
 }
