@@ -1,5 +1,3 @@
-import 'package:fire_alarm/modules/Alerts/device_alert_page.dart';
-import 'package:fire_alarm/modules/Users/user_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -13,6 +11,8 @@ import 'others/theme/app_theme.dart';
 import '/index_page.dart';
 import '/screens/login_screen.dart';
 import '/screens/signup_screen.dart';
+import '/modules/Alerts/alert_by_device_page.dart';
+import '/modules/Users/user_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,7 +38,7 @@ class FireAlarm extends StatelessWidget {
         GetPage(name: '/packages', page: () => PackagePage()),
         GetPage(name: '/devices', page: () => DevicePage()),
         GetPage(name: '/alerts', page: () => AlertPage()),
-        GetPage(name: '/device_alerts', page: () => DeviceAlertPage()),
+        GetPage(name: '/device_alerts', page: () => AlertByDevicePage()),
         GetPage(name: '/home', page: () => HomeScreen()),
         GetPage(name: '/orders', page: () => OrderPage()),
         GetPage(name: '/checkout', page: () => ShurjoPayCheckoutPage()),

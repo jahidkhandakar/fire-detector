@@ -10,7 +10,7 @@ class AlertController extends GetxController {
   var isLoading = false.obs;
   var error = ''.obs;
 
-  /// 🔹 Fetch all alerts
+  //*------------------- 🔹 Fetch all alerts -------------------
   Future<void> loadAlerts({required String apiUrl}) async {
     try {
       isLoading(true);
@@ -25,7 +25,7 @@ class AlertController extends GetxController {
     }
   }
 
-  /// 🔹 Fetch alerts for a specific device
+  //*---------------🔹 Fetch alerts for a specific device------------
   Future<void> loadAlertsByDevice(int deviceId) async {
     try {
       isLoading(true);
@@ -43,7 +43,7 @@ class AlertController extends GetxController {
     }
   }
 
-  /// 🔹 Resolve alert and update status locally
+  //*---------- 🔹 Resolve alert and update status locally------------
   Future<void> resolveAlert(int alertId) async {
     try {
       final success = await _service.resolveAlert(

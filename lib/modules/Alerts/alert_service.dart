@@ -14,7 +14,7 @@ class AlertService {
     };
   }
 
-  /// 🔹 Fetch all alerts (paginated API)
+  //*---------- 🔹 Fetch all alerts (paginated API)------------
   Future<List<AlertModel>> fetchAlerts({required String apiUrl}) async {
     final uri = Uri.parse(apiUrl);
     final response = await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 20));
@@ -30,7 +30,7 @@ class AlertService {
     }
   }
 
-  /// 🔹 Fetch alerts for a specific device (GET /devices/<id>/alerts)
+  //*--- 🔹 Fetch alerts for a specific device (GET /devices/<id>/alerts)-----
   Future<List<AlertModel>> fetchAlertsByDevice({
     required String baseUrl,
     required int deviceId,
@@ -49,7 +49,7 @@ class AlertService {
     }
   }
 
-  /// 🔹 Resolve an alert (POST /alerts/<id>/resolve/)
+  //*------- 🔹 Resolve an alert (POST /alerts/<id>/resolve/)-------
   Future<bool> resolveAlert({
     required String baseUrl,
     required int alertId,
