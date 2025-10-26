@@ -1,11 +1,13 @@
-import 'package:fire_alarm/mvc/controller/user_controller.dart';
-import 'package:fire_alarm/mvc/model/user_model.dart';
-import 'package:fire_alarm/others/theme/app_theme.dart';
-import 'package:fire_alarm/others/utils/api.dart';
+import '/modules/users/user_controller.dart';
+import '/modules/users/user_model.dart';
+import '/others/theme/app_theme.dart';
+import '/others/utils/api.dart';
 import 'package:flutter/material.dart';
 
 class CustomDrawer extends StatefulWidget {
-  const CustomDrawer({super.key});
+  final ValueChanged<int>? onTabSelected;
+
+  const CustomDrawer({super.key, this.onTabSelected});
 
   @override
   State<CustomDrawer> createState() => _CustomDrawerState();
@@ -27,6 +29,10 @@ class _CustomDrawerState extends State<CustomDrawer> {
       child: FutureBuilder<UserModel>(
         future: _future,
         builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
           String name = 'User';
           String phone = '';
           String email = '';
@@ -42,50 +48,47 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
           return Column(
             children: [
-              // Header
-              InkWell(
-                onTap: () => Navigator.pushNamed(context, '/profile'),
-                child: Container(
-                  decoration: BoxDecoration(gradient: AppTheme.fireGradient),
-                  padding: const EdgeInsets.symmetric(vertical: 32),
-                  alignment: Alignment.center,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircleAvatar(
-                        radius: 40,
-                        backgroundColor: Colors.white24,
-                        child: Icon(
-                          Icons.person,
-                          size: 48,
-                          color: Colors.white,
-                        ),
+              // Drawer Header (non-tappable)
+              Container(
+                decoration: BoxDecoration(gradient: AppTheme.fireGradient),
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.white24,
+                      child: Icon(
+                        Icons.person,
+                        size: 48,
+                        color: Colors.white,
                       ),
-                      const SizedBox(height: 16),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                    if (phone.isNotEmpty) ...[
+                      const SizedBox(height: 8),
                       Text(
-                        name,
+                        phone,
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
+                          color: Colors.white70,
+                          fontSize: 16,
                         ),
                       ),
-                      if (phone.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          phone,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               ),
 
-              // Drawer items
+              // Drawer Items
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.zero,
@@ -108,10 +111,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       ),
                     const SizedBox(height: 16),
                     ListTile(
-                      leading: const Icon(
-                        Icons.book,
-                        color: Colors.deepOrange,
-                      ),
+                      leading: const Icon(Icons.book, color: Colors.deepOrange),
                       title: const Text("About"),
                       onTap: () => Navigator.pushNamed(context, '/about'),
                     ),
@@ -121,7 +121,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
               const Divider(),
 
-              // Logout pinned at bottom
+              // Logout Button (pinned bottom)
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.redAccent),
                 title: const Text("Logout"),
@@ -149,7 +149,9 @@ class _CustomDrawerState extends State<CustomDrawer> {
                         ),
                         const SizedBox(width: 16),
                         TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
+                          onPressed: () {
+                            Navigator.pop(ctx, true);
+                          },
                           child: const Text("Logout"),
                         ),
                       ],
@@ -157,7 +159,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   );
 
                   if (confirm == true && context.mounted) {
-                    // TODO: call your AuthService.logout() here
+                    // TODO: call your AuthService.logout() here if needed
+                    _user.clearCachedUser();
                     Navigator.pushReplacementNamed(context, "/login");
                   }
                 },

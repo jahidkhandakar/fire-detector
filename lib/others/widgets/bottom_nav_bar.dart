@@ -19,11 +19,10 @@ class BottomNavBar extends StatelessWidget {
       unselectedItemColor: Colors.grey,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.notifications_active),
-          label: 'Alerts',
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.devices), label: 'Devices'),
+        BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Packages'),
         BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
       ],
     );
   }

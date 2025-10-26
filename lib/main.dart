@@ -1,11 +1,18 @@
+import 'package:fire_alarm/modules/Alerts/device_alert_page.dart';
+import 'package:fire_alarm/modules/Users/user_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import '/modules/Alerts/alert_page.dart';
+import '/modules/Devices/device_page.dart';
+import '/modules/Orders/order_page.dart';
+import '/modules/Packages/package_page.dart';
+import '/modules/ShurjoPay/shurjopay_checkout_page.dart';
+import '/screens/home_screen.dart';
 import 'others/theme/app_theme.dart';
-import 'mvc/view/pages/index_page.dart';
-import 'mvc/view/pages/profile_page.dart';
-import 'mvc/view/screens/login_screen.dart';
-import 'mvc/view/screens/signup_screen.dart';
+import '/index_page.dart';
+import '/screens/login_screen.dart';
+import '/screens/signup_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,20 +21,27 @@ void main() async {
 }
 
 class FireAlarm extends StatelessWidget {
- FireAlarm({super.key});
+ const FireAlarm({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final hasToken = GetStorage().read<String>('access')?.isNotEmpty == true;
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      initialRoute: hasToken ? '/index' : '/login',
+      //initialRoute: hasToken ? '/index' : '/login',
+      initialRoute: '/login',
       getPages: [
         GetPage(name: '/login', page: () => LoginScreen()),
         GetPage(name: '/signup', page: () => SignupScreen()),
         GetPage(name: '/index', page: () => IndexPage()),
-        GetPage(name: '/profile', page: () => ProfilePage()),
+        GetPage(name: '/user', page: () => UserPage()),
+        GetPage(name: '/packages', page: () => PackagePage()),
+        GetPage(name: '/devices', page: () => DevicePage()),
+        GetPage(name: '/alerts', page: () => AlertPage()),
+        GetPage(name: '/device_alerts', page: () => DeviceAlertPage()),
+        GetPage(name: '/home', page: () => HomeScreen()),
+        GetPage(name: '/orders', page: () => OrderPage()),
+        GetPage(name: '/checkout', page: () => ShurjoPayCheckoutPage()),
       ],
     );
   }
