@@ -1,23 +1,56 @@
-import 'package:fire_alarm/others/utils/api.dart';
-import '/modules/orders/order_model.dart';
-import '/services/method_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:get_storage/get_storage.dart';
+import '/others/utils/api.dart';
+import 'order_model.dart';
 
 class OrderService {
-  final MethodService _method = MethodService();
+  final client = http.Client();
+  final _box = GetStorage();
 
-  Future<List<OrderModel>> fetchOrders({required int user_id}) async {
-    final url = "${Api.orders}$user_id/"; // e.g., base-url/orders/1/
-    final response = await _method.get(url);
+  Map<String, String> _headers() {
+    final token = _box.read<String>('access');
+    return {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty)
+        'Authorization': 'Bearer $token',
+    };
+  }
 
-    if (response is List) {
-      return response.map((e) => OrderModel.fromJson(e)).toList();
-    } else if (response['results'] != null) {
-      // if backend paginates
-      return (response['results'] as List)
-          .map((e) => OrderModel.fromJson(e))
-          .toList();
+  /// 🔹 Get all orders for a user
+  Future<List<OrderModel>> fetchOrders(int userId) async {
+    final uri = Uri.parse('${Api.orders}$userId/');
+    final res = await client.get(uri, headers: _headers());
+    print('🟢 GET /orders/$userId → ${res.statusCode}');
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as List;
+      return data.map((e) => OrderModel.fromJson(e)).toList();
     } else {
-      return [];
+      throw Exception('Failed to fetch orders');
+    }
+  }
+
+  /// 🔹 Get single order
+  Future<OrderModel> fetchOrderById(int userId, int orderId) async {
+    final uri = Uri.parse('${Api.orders}$userId/$orderId/');
+    final res = await client.get(uri, headers: _headers());
+    print('🟢 GET /orders/$userId/$orderId → ${res.statusCode}');
+    if (res.statusCode == 200) {
+      return OrderModel.fromJson(jsonDecode(res.body));
+    } else {
+      throw Exception('Failed to fetch order details');
+    }
+  }
+
+  /// 🔹 Create new order
+  Future<OrderModel> createOrder(int userId, Map<String, dynamic> body) async {
+    final uri = Uri.parse('${Api.orders}$userId/');
+    final res = await client.post(uri, headers: _headers(), body: jsonEncode(body));
+    print('🟢 POST /orders/$userId → ${res.statusCode}');
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return OrderModel.fromJson(jsonDecode(res.body));
+    } else {
+      throw Exception('Failed to create order (${res.statusCode})');
     }
   }
 }

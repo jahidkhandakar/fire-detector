@@ -1,4 +1,4 @@
-package com.example.fire_alarm
+package com.pranisheba.fire_alarm
 
 import io.flutter.embedding.android.FlutterActivity
 

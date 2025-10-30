@@ -152,13 +152,17 @@ class AlertByDevicePage extends StatelessWidget {
     AlertController controller,
     AlertModel a,
   ) async {
+    print('🔥 Fire dialog triggered for alert: ${a.id}');
+    print('Playing alarm...');
+
     final player = AudioPlayer();
     //*---------------- 🔊 Start siren/alarm sound---------------------
     await player.setReleaseMode(ReleaseMode.loop);
-    await player.play(AssetSource('assets/sounds/alarm1.mp3'), volume: 1.0);
-
-    //*-------------- 📳 Start vibration if available-----------------
-    if (await Vibration.hasVibrator() ?? false) {
+    print('Release mode set');
+    await player.play(AssetSource('sounds/fire_alarm.mp3'), volume: 1.0);
+    print('Alarm sound played');
+    //*-------------- 📳 Start vibration if available---------
+    if (await Vibration.hasVibrator()) {
       // pattern: [delay, vibrate, pause, vibrate, pause, ...]
       Vibration.vibrate(
         pattern: [0, 800, 400, 800, 400],
@@ -173,12 +177,15 @@ class AlertByDevicePage extends StatelessWidget {
           (_) => AlertDialog(
             title: const Text(
               '🔥 Fire Alert!',
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            content: Text(
-              'Alert Type: ${a.alertType}\n'
-              'Device: ${a.deviceHardwareIdentifier}\n'
-              'Status: ${a.status}',
+            content: _alertDialogText(
+              'ALERT TYPE : ${a.alertType}\n'
+              'DEVICE     : ${a.deviceHardwareIdentifier}\n'
+              'STATUS     : ${a.status}',
             ),
             actions: [
               TextButton(
@@ -192,7 +199,11 @@ class AlertByDevicePage extends StatelessWidget {
                 },
                 child: const Text(
                   'Resolve',
-                  style: TextStyle(color: Colors.deepOrange),
+                  style: TextStyle(
+                    color: Colors.deepOrange,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
                 ),
               ),
             ],
@@ -291,6 +302,16 @@ class AlertByDevicePage extends StatelessWidget {
           ),
         ),
       ],
+    ),
+  );
+}
+//*__________________Alert Dialog Text__________________*//
+Widget _alertDialogText(String text) {
+  return Text(
+    text,
+    style: const TextStyle(
+      fontSize: 16,
+      color: Colors.black87,
     ),
   );
 }

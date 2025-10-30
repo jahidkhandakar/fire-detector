@@ -38,11 +38,11 @@ class _DevicePageState extends State<DevicePage> {
 
       return Column(
         children: [
-          // Tabs content
+          //*---- Tabs content ----*//
           Expanded(
             child: TabBarView(
               children: [
-                // All Devices
+                //*---------- All Devices------------
                 RefreshIndicator(
                   onRefresh: _controller.loadAll,
                   child: _controller.devices.isEmpty
@@ -54,7 +54,7 @@ class _DevicePageState extends State<DevicePage> {
                               _buildDeviceCard(_controller.devices[i]),
                         ),
                 ),
-                // Device Tree
+                //*------------ Device Tree-----------
                 RefreshIndicator(
                   onRefresh: _controller.loadTree,
                   child: _controller.tree.isEmpty
@@ -70,7 +70,7 @@ class _DevicePageState extends State<DevicePage> {
             ),
           ),
 
-          // Bottom: Register Device
+          //*___________ Bottom: Register Device ___________*
           SafeArea(
             top: false,
             child: Padding(
@@ -118,7 +118,7 @@ class _DevicePageState extends State<DevicePage> {
     });
   }
 
-  // ---------- UI helpers ----------
+  //* ---------- Device List ----------
 
   Widget _buildDeviceCard(DeviceModel device) {
     return Card(
@@ -153,7 +153,7 @@ class _DevicePageState extends State<DevicePage> {
       ),
     );
   }
-
+  //* ---------- Device Tree (Master with Slaves) ---------- */
   Widget _buildMasterWithSlaves(DeviceNode node) {
     final master = node.master;
     final slaves = node.slaves;
@@ -209,7 +209,7 @@ class _DevicePageState extends State<DevicePage> {
       ),
     );
   }
-
+  //* ---------- Device Details Dialog ---------- */
   void _showDeviceDetailsDialog(DeviceModel device) {
     showDialog(
       context: context,
@@ -304,7 +304,7 @@ class _DevicePageState extends State<DevicePage> {
       },
     );
   }
-
+  //* ---------- Detail Row Widget ---------- */
   Widget _detailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),

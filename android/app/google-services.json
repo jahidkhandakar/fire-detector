@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "182616775605",
+    "project_id": "fire-alarm-54db1",
+    "storage_bucket": "fire-alarm-54db1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:182616775605:android:69646cef7f4302a45397fc",
+        "android_client_info": {
+          "package_name": "com.pranisheba.fire_alarm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9CrtvMtX4k85ytcrw__8hzvt1uibSqyU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -20,12 +20,16 @@ class _PackagePageState extends State<PackagePage> {
   final _currency = NumberFormat.currency(locale: 'en_BD', symbol: '৳');
 
   final Map<int, int> masterQtyByPackage = {};
-  final Map<int, int> slaveQtyByPackage  = {};
+  final Map<int, int> slaveQtyByPackage = {};
 
   @override
   void initState() {
     super.initState();
-    _controller.loadPackages(apiUrl: apiUrl);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_controller.packages.isEmpty && !_controller.isLoading.value) {
+        _controller.loadPackages(apiUrl: apiUrl);
+      }
+    });
   }
 
   @override
@@ -59,12 +63,12 @@ class _PackagePageState extends State<PackagePage> {
 
   Widget _buildPackageCard(PackageModel pkg) {
     final masters = masterQtyByPackage[pkg.id] ?? pkg.minQuantity;
-    final slaves  = slaveQtyByPackage[pkg.id]  ?? 0;
+    final slaves = slaveQtyByPackage[pkg.id] ?? 0;
 
-    final devices            = masters + slaves;
+    final devices = masters + slaves;
     final upfrontDevicesCost = pkg.pricePerDevice * devices;
-    final firstMonthMrf      = pkg.mrf * masters; // MRF only on masters
-    final totalNow           = upfrontDevicesCost + firstMonthMrf;
+    final firstMonthMrf = pkg.mrf * masters; // MRF only on masters
+    final totalNow = upfrontDevicesCost + firstMonthMrf;
 
     return Card(
       elevation: 4,
@@ -75,27 +79,48 @@ class _PackagePageState extends State<PackagePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              Expanded(
-                child: Text(
-                  _titleCase(pkg.name.isEmpty ? 'Unnamed Package' : pkg.name),
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue[800]),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _titleCase(pkg.name.isEmpty ? 'Unnamed Package' : pkg.name),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue[800],
+                    ),
+                  ),
                 ),
-              ),
-              _rangeChip(pkg.minQuantity, pkg.maxQuantity),
-            ]),
+                _rangeChip(pkg.minQuantity, pkg.maxQuantity),
+              ],
+            ),
             const SizedBox(height: 8),
             const Divider(height: 20),
 
-            _rowIconTextValue(icon: Icons.sell, label: 'Price / Device', value: _currency.format(pkg.pricePerDevice)),
+            _rowIconTextValue(
+              icon: Icons.sell,
+              label: 'Price / Device',
+              value: _currency.format(pkg.pricePerDevice),
+            ),
             const SizedBox(height: 10),
-            _rowIconTextValue(icon: Icons.autorenew, label: 'MRF (per master)', value: pkg.mrf == 0 ? '—' : _currency.format(pkg.mrf)),
+            _rowIconTextValue(
+              icon: Icons.autorenew,
+              label: 'MRF (per master)',
+              value: pkg.mrf == 0 ? '—' : _currency.format(pkg.mrf),
+            ),
 
             const SizedBox(height: 14),
             const Divider(height: 20),
 
             Center(
-              child: Text("How many devices do you need?", style: TextStyle(fontSize: 16, color: Colors.grey[800], fontWeight: FontWeight.w600)),
+              child: Text(
+                "How many devices do you need?",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[800],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
             const SizedBox(height: 18),
             Row(
@@ -104,13 +129,21 @@ class _PackagePageState extends State<PackagePage> {
                 // Master selector
                 Column(
                   children: [
-                    Text("Master", style: TextStyle(fontSize: 16, color: Colors.grey[800], fontWeight: FontWeight.w600)),
+                    Text(
+                      "Master",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[800],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     PackageSelector(
                       min: pkg.minQuantity,
                       max: pkg.maxQuantity,
                       initial: masters,
-                      onChanged: (v) => setState(() => masterQtyByPackage[pkg.id] = v),
+                      onChanged:
+                          (v) => setState(() => masterQtyByPackage[pkg.id] = v),
                     ),
                   ],
                 ),
@@ -118,13 +151,21 @@ class _PackagePageState extends State<PackagePage> {
                 // Slave selector
                 Column(
                   children: [
-                    Text("Slave", style: TextStyle(fontSize: 16, color: Colors.grey[800], fontWeight: FontWeight.w600)),
+                    Text(
+                      "Slave",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[800],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     PackageSelector(
                       min: 0,
                       max: pkg.maxQuantity,
                       initial: slaves,
-                      onChanged: (v) => setState(() => slaveQtyByPackage[pkg.id] = v),
+                      onChanged:
+                          (v) => setState(() => slaveQtyByPackage[pkg.id] = v),
                     ),
                   ],
                 ),
@@ -132,7 +173,15 @@ class _PackagePageState extends State<PackagePage> {
             ),
 
             const SizedBox(height: 12),
-            Center(child: Text('Selected: $masters Master • $slaves Slave', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w600))),
+            Center(
+              child: Text(
+                'Selected: $masters Master • $slaves Slave',
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
             const SizedBox(height: 8),
             Center(
               child: Text(
@@ -178,7 +227,7 @@ class _PackagePageState extends State<PackagePage> {
                     // 🔐 Use your provided fixed values for body:
                     final init = await payCtrl.startPayment({
                       "reference": "${pkg.id}",
-                      "amount": totalNow,                 // MUST be > 0
+                      "amount": totalNow, // MUST be > 0
                       "currency": "BDT",
                       "customer_name": "Jahid",
                       "customer_address": "Badda",
@@ -189,24 +238,37 @@ class _PackagePageState extends State<PackagePage> {
                     });
 
                     if (init != null && init.checkoutUrl.isNotEmpty) {
-                      final orderIdForVerify = init.spOrderId.isNotEmpty
-                          ? init.spOrderId
-                          : init.transactionId.toString();
+                      final orderIdForVerify =
+                          init.spOrderId.isNotEmpty
+                              ? init.spOrderId
+                              : init.transactionId.toString();
 
                       // Await result from checkout (true=paid, false/cancel)
-                      final ok = await Get.toNamed('/checkout', arguments: {
-                        'checkoutUrl': init.checkoutUrl,
-                        'orderId': orderIdForVerify,
-                        'transactionId': init.transactionId, // you can use this with /status
-                      });
+                      final ok = await Get.toNamed(
+                        '/checkout',
+                        arguments: {
+                          'checkoutUrl': init.checkoutUrl,
+                          'orderId': orderIdForVerify,
+                          'transactionId':
+                              init.transactionId, // you can use this with /status
+                        },
+                      );
 
                       if (ok == true) {
-                        Get.snackbar('Order', 'Your order has been confirmed ✅');
+                        Get.snackbar(
+                          'Order',
+                          'Your order has been confirmed ✅',
+                        );
                       } else {
                         Get.snackbar('Order', 'Payment did not complete');
                       }
                     } else {
-                      Get.snackbar('Error', payCtrl.error.value.isNotEmpty ? payCtrl.error.value : 'Failed to start payment');
+                      Get.snackbar(
+                        'Error',
+                        payCtrl.error.value.isNotEmpty
+                            ? payCtrl.error.value
+                            : 'Failed to start payment',
+                      );
                     }
                   },
                   icon: const Icon(Icons.shopping_cart_checkout),
@@ -220,13 +282,32 @@ class _PackagePageState extends State<PackagePage> {
     );
   }
 
-  Widget _rowIconTextValue({required IconData icon, required String label, required String value}) {
+  Widget _rowIconTextValue({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
     return Row(
       children: [
         Icon(icon, size: 18, color: Colors.black54),
         const SizedBox(width: 8),
-        Expanded(child: Text(label, style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.w600))),
-        Text(value, style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w600)),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[800],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
@@ -234,7 +315,11 @@ class _PackagePageState extends State<PackagePage> {
   Widget _rangeChip(int minQ, int maxQ) {
     return Chip(
       label: Text('Qty: $minQ–$maxQ'),
-      avatar: const Icon(Icons.format_list_numbered, size: 16, color: Colors.white),
+      avatar: const Icon(
+        Icons.format_list_numbered,
+        size: 16,
+        color: Colors.white,
+      ),
       labelStyle: const TextStyle(color: Colors.white),
       backgroundColor: Colors.blueAccent,
       visualDensity: VisualDensity.compact,
@@ -247,22 +332,48 @@ class _PackagePageState extends State<PackagePage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) {
         return Padding(
           padding: const EdgeInsets.all(16),
           child: SingleChildScrollView(
-            child: Column(children: [
-              Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
-              const SizedBox(height: 12),
-              Text(_titleCase(pkg.name), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              _kvRow('ID', pkg.id.toString()),
-              _kvRow('Quantity Range', '${pkg.minQuantity} – ${pkg.maxQuantity}'),
-              _kvRow('Price per Device', _currency.format(pkg.pricePerDevice)),
-              _kvRow('MRF (per master)', pkg.mrf == 0 ? '—' : _currency.format(pkg.mrf)),
-              const SizedBox(height: 16),
-            ]),
+            child: Column(
+              children: [
+                Container(
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _titleCase(pkg.name),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _kvRow('ID', pkg.id.toString()),
+                _kvRow(
+                  'Quantity Range',
+                  '${pkg.minQuantity} – ${pkg.maxQuantity}',
+                ),
+                _kvRow(
+                  'Price per Device',
+                  _currency.format(pkg.pricePerDevice),
+                ),
+                _kvRow(
+                  'MRF (per master)',
+                  pkg.mrf == 0 ? '—' : _currency.format(pkg.mrf),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         );
       },
@@ -274,8 +385,25 @@ class _PackagePageState extends State<PackagePage> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Expanded(flex: 3, child: Text('$k:', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87))),
-          Expanded(flex: 5, child: Text(v, textAlign: TextAlign.end, style: const TextStyle(fontSize: 15, color: Colors.black54))),
+          Expanded(
+            flex: 3,
+            child: Text(
+              '$k:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 5,
+            child: Text(
+              v,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontSize: 15, color: Colors.black54),
+            ),
+          ),
         ],
       ),
     );
@@ -283,6 +411,9 @@ class _PackagePageState extends State<PackagePage> {
 
   String _titleCase(String s) {
     if (s.isEmpty) return s;
-    return s.split(' ').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
+    return s
+        .split(' ')
+        .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
   }
 }
