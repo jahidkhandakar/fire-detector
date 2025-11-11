@@ -62,4 +62,18 @@ class AlertService {
     if (response.statusCode == 200) return true;
     throw Exception('Failed to resolve alert #$alertId (${response.statusCode})');
   }
+
+  //*------- 🔹 Acknowledge an alert (POST /alerts/<id>/acknowledge/)-------
+  Future<bool> acknowledgeAlert({
+    required String baseUrl,
+    required int alertId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/alerts/$alertId/acknowledge/');
+    final response = await http.post(uri, headers: _headers());
+
+    print("Acknowledge Alert Response (${response.statusCode}): ${response.body}");
+
+    if (response.statusCode == 200) return true;
+    throw Exception('Failed to acknowledge alert #$alertId (${response.statusCode})');
+  }
 }

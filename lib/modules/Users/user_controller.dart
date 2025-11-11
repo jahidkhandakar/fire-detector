@@ -64,4 +64,13 @@ class UserController extends GetxController {
     me.value = null;
     _box.remove('user_id');
   }
+
+  Future<void> logout(BuildContext context) async {
+    final box = GetStorage();
+    await box.erase();
+    await box.save();
+
+    debugPrint("🧹 Storage cleared, navigating to login");
+    Get.offAllNamed('/login');
+  }
 }

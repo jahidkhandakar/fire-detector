@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
+  final primaryColor = const Color.fromRGBO(250, 221, 1, 1);
+  final secondaryColor = Colors.orangeAccent;
   //_________________________Theme Data_________________________//
   static ThemeData get theme {
     return ThemeData(

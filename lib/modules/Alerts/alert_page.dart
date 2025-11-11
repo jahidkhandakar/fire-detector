@@ -3,29 +3,45 @@ import 'package:get/get.dart';
 import 'alert_controller.dart';
 import 'alert_model.dart';
 import 'package:fire_alarm/others/utils/api.dart';
+import '/modules/Firebase/push_notification_service.dart';
 
-class AlertPage extends StatelessWidget {
+class AlertPage extends StatefulWidget {
   const AlertPage({super.key});
 
   @override
+  State<AlertPage> createState() => _AlertPageState();
+}
+
+class _AlertPageState extends State<AlertPage> {
+  final AlertController controller = Get.put(AlertController());
+  final String apiUrl = Api.alerts;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ Initialize Push Notification listener (if not already)
+    PushNotificationService.initialize();
+
+    // ✅ Load alerts initially
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.loadAlerts(apiUrl: apiUrl);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final AlertController controller = Get.put(AlertController());
-    final String apiUrl = Api.alerts;
-
-    // fetch alerts when the page opens
-    controller.loadAlerts(apiUrl: apiUrl);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Fire Alerts'),
-        backgroundColor: Colors.deepOrangeAccent,
+        backgroundColor: Colors.deepOrange,
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (controller.error.isNotEmpty) {
+        if (controller.error.value.isNotEmpty) {
           return Center(child: Text(controller.error.value));
         }
 
@@ -40,7 +56,8 @@ class AlertPage extends StatelessWidget {
             itemBuilder: (context, index) {
               final AlertModel alert = controller.alerts[index];
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                margin:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 elevation: 2,
                 child: ListTile(
                   leading: const Icon(
@@ -66,15 +83,14 @@ class AlertPage extends StatelessWidget {
     );
   }
 
-  /// 🔹 Show all alert details in a dialog box
+  //*--------- Show alert details dialog ---------*
   void _showAlertDetailsDialog(BuildContext context, AlertModel alert) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 8,
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -82,11 +98,8 @@ class AlertPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Center(
-                  child: Icon(
-                    Icons.warning_amber_rounded,
-                    color: Colors.deepOrangeAccent,
-                    size: 50,
-                  ),
+                  child: Icon(Icons.warning_amber_rounded,
+                      color: Colors.deepOrange, size: 50),
                 ),
                 const SizedBox(height: 10),
                 Center(
@@ -95,36 +108,30 @@ class AlertPage extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Colors.deepOrangeAccent,
+                      color: Colors.deepOrange,
                     ),
                   ),
                 ),
                 const Divider(height: 25, thickness: 1.2),
-
                 _buildDetailRow('ID', alert.id.toString()),
                 _buildDetailRow('Device ID', alert.device.toString()),
                 _buildDetailRow(
-                  'Hardware Identifier',
-                  alert.deviceHardwareIdentifier,
-                ),
+                    'Hardware Identifier', alert.deviceHardwareIdentifier),
                 _buildDetailRow('Alert Type', alert.alertType),
                 _buildDetailRow('Status', alert.status),
-                _buildDetailRow('Triggered At', alert.triggeredAt.toString()),
                 _buildDetailRow(
-                  'Resolved At',
-                  alert.resolvedAt != null
-                      ? alert.resolvedAt.toString()
-                      : 'Pending',
-                ),
+                    'Triggered At', alert.triggeredAt.toString()),
+                _buildDetailRow(
+                    'Resolved At',
+                    alert.resolvedAt != null
+                        ? alert.resolvedAt.toString()
+                        : 'Pending'),
                 _buildDetailRow('Owner ID', alert.ownerId.toString()),
                 _buildDetailRow('Owner Email', alert.ownerEmail),
                 _buildDetailRow(
-                  'Owner Phone',
-                  alert.ownerPhone.isEmpty ? 'N/A' : alert.ownerPhone,
-                ),
-
+                    'Owner Phone',
+                    alert.ownerPhone.isEmpty ? 'N/A' : alert.ownerPhone),
                 const SizedBox(height: 25),
-
                 Align(
                   alignment: Alignment.center,
                   child: ElevatedButton.icon(
@@ -132,15 +139,12 @@ class AlertPage extends StatelessWidget {
                     icon: const Icon(Icons.close),
                     label: const Text('Close'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepOrangeAccent,
+                      backgroundColor: Colors.deepOrange,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
+                          horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 ),
@@ -152,7 +156,7 @@ class AlertPage extends StatelessWidget {
     );
   }
 
-  /// Helper widget for each row
+  //*------------ Helper for key-value rows ------------*
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),

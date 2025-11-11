@@ -19,7 +19,7 @@ class _IndexPageState extends State<IndexPage> {
 
   final List<Widget> _pages = const [
     HomeScreen(),
-    DevicePage(), // now only renders TabBarView
+    DevicePage(), // Only renders TabBarView
     PackagePage(),
     HistoryScreen(),
     UserPage(),

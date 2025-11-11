@@ -4,6 +4,7 @@ import 'package:get_storage/get_storage.dart';
 import '/modules/auth/auth_controller.dart';
 import '/others/utils/api.dart';
 import '/others/widgets/custom_snackbar.dart';
+import '/modules/Firebase/push_notification_service.dart';
 
 class AuthHandle {
   final AuthController _authController = AuthController();
@@ -39,6 +40,13 @@ class AuthHandle {
       debugPrint(
         "Login success: access=${access.toString().substring(0, 15)}...",
       );
+
+      // 👉 Register / re-bind this device's FCM token to the logged-in user
+      try {
+        await PushNotificationService.registerAfterAuth();
+      } catch (e) {
+        debugPrint('⚠️ registerAfterAuth failed: $e');
+      }
 
       if (context.mounted) {
         Get.offAllNamed('/index');
@@ -90,6 +98,9 @@ class AuthHandle {
     final code = res['statusCode'] as int? ?? 0;
     final data = res['data'];
 
+    print("Status Code: $code");
+    print("Response Data: $data");
+
     if (code == 201 && data is Map<String, dynamic>) {
       await _box.write('name', nameController.text.trim());
 
@@ -98,12 +109,22 @@ class AuthHandle {
         Get.offAllNamed('/login');
       }
     } else {
-      debugPrint("Registration failed: $res");
+      final dynamic d = res['data'];
+      final String errMsg =
+          (d is Map<String, dynamic>)
+              ? (d['detail']?.toString() ??
+                  d['message']?.toString() ??
+                  d['error']?.toString() ??
+                  'Something went wrong')
+              : (res['detail']?.toString() ?? 'Something went wrong');
+
+      debugPrint("Registration failed ($code): $errMsg");
+
       if (context.mounted) {
-        CustomSnackbar().show(
-          "Registration failed",
-          res['detail'] ?? "Unknown error",
-        );
+        // Show exactly what backend returned
+        //CustomSnackbar().error(errMsg);
+        // Or if your CustomSnackbar uses `.show(title, message)`:
+        CustomSnackbar().show('Registration failed', errMsg);
       }
     }
   }

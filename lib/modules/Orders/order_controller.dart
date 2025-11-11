@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:flutter/foundation.dart';
 import 'order_model.dart';
 import 'order_service.dart';
 
@@ -8,36 +9,43 @@ class OrderController extends GetxController {
   var isLoading = false.obs;
   var error = ''.obs;
 
-  /// 🔹 Get all orders for the logged-in user
   Future<void> loadOrders({required int userId}) async {
     try {
       isLoading.value = true;
       error.value = '';
+      debugPrint('🔄 Loading orders for userId=$userId');
       orders.value = await _service.fetchOrders(userId);
-    } catch (e) {
+      debugPrint('✅ Loaded ${orders.length} orders');
+    } catch (e, st) {
+      debugPrint('❌ loadOrders error: $e\n$st');
       error.value = e.toString();
     } finally {
       isLoading.value = false;
     }
   }
 
-  /// 🔹 Get specific order details
   Future<OrderModel?> getOrderById({required int userId, required int orderId}) async {
     try {
-      return await _service.fetchOrderById(userId, orderId);
-    } catch (e) {
+      debugPrint('🔄 Fetch order by id=$orderId for userId=$userId');
+      final o = await _service.fetchOrderById(userId, orderId);
+      return o;
+    } catch (e, st) {
+      debugPrint('❌ getOrderById error: $e\n$st');
       error.value = e.toString();
       return null;
     }
   }
 
-  /// 🔹 Create new order
   Future<OrderModel?> createOrder({required int userId, required Map<String, dynamic> body}) async {
     try {
-      final order = await _service.createOrder(userId, body);
-      orders.insert(0, order);
-      return order;
-    } catch (e) {
+      error.value = '';
+      debugPrint('🧾 createOrder called for userId=$userId');
+      final o = await _service.createOrder(userId, body);
+      orders.insert(0, o);
+      debugPrint('✅ Order created: id=${o.id}, reference=${o.reference}, status=${o.orderStatus}');
+      return o;
+    } catch (e, st) {
+      debugPrint('❌ createOrder error: $e\n$st');
       error.value = e.toString();
       return null;
     }

@@ -19,6 +19,7 @@ class Api {
 
   // Orders
   static const String orders = "$baseUrl/orders/";
+  static const String ordersUpdateStatus = '$baseUrl/orders/update_status/';
 
   //Payments
   static const shurjoInitiate = '$baseUrl/shurjopay/initiate/';
@@ -26,6 +27,9 @@ class Api {
   static const shurjoStatus = '$baseUrl/shurjopay/status/';
   static const shurjoReturn = '$baseUrl/shurjopay/return/';
   static const shurjoCancel = '$baseUrl/shurjopay/cancel/';
+
+  //Acknowledge 
+  static const String acknowledge = "$baseUrl/alerts/{id}/acknowledge/";
 
   //Users
   static const String users = "$baseUrl/users/${"id"}";

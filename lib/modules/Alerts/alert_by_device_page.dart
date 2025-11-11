@@ -1,10 +1,9 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:vibration/vibration.dart';
 import 'alert_controller.dart';
 import 'alert_model.dart';
 import '../Devices/device_controller.dart';
+import '/others/widgets/custom_dialog.dart';
 
 class AlertByDevicePage extends StatelessWidget {
   const AlertByDevicePage({super.key});
@@ -18,7 +17,7 @@ class AlertByDevicePage extends StatelessWidget {
     // Load devices once on first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (deviceCtrl.devices.isEmpty && !deviceCtrl.isLoading.value) {
-        deviceCtrl.loadAll(); // uses your existing method
+        deviceCtrl.loadAll();
       }
     });
 
@@ -57,23 +56,20 @@ class AlertByDevicePage extends StatelessWidget {
               }
 
               return DropdownButtonFormField<int>(
-                value:
-                    selectedDeviceId.value == 0 ? null : selectedDeviceId.value,
+                value: selectedDeviceId.value == 0 ? null : selectedDeviceId.value,
                 hint: const Text('Select a Device'),
-                items:
-                    deviceCtrl.devices.map((d) {
-                      final int id = d.id;
-                      final String label =
-                          (d.deviceName?.isNotEmpty == true)
-                              ? d.deviceName!
-                              : (d.hardwareIdentifier?.isNotEmpty == true)
-                              ? d.hardwareIdentifier!
-                              : 'Device #$id';
-                      return DropdownMenuItem<int>(
-                        value: id,
-                        child: Text(label),
-                      );
-                    }).toList(),
+                items: deviceCtrl.devices.map((d) {
+                  final int id = d.id;
+                  final String label = (d.deviceName?.isNotEmpty == true)
+                      ? d.deviceName!
+                      : (d.hardwareIdentifier?.isNotEmpty == true)
+                          ? d.hardwareIdentifier!
+                          : 'Device #$id';
+                  return DropdownMenuItem<int>(
+                    value: id,
+                    child: Text(label),
+                  );
+                }).toList(),
                 onChanged: (value) {
                   if (value == null) return;
                   selectedDeviceId.value = value;
@@ -93,46 +89,51 @@ class AlertByDevicePage extends StatelessWidget {
                   return Center(child: Text(alertCtrl.error.value));
                 }
                 if (alertCtrl.alerts.isEmpty) {
-                  return const Center(
-                    child: Text('No alerts for this device.'),
-                  );
+                  return const Center(child: Text('No alerts for this device.'));
                 }
 
                 return ListView.builder(
                   itemCount: alertCtrl.alerts.length,
                   itemBuilder: (_, i) {
-                    final AlertModel a = alertCtrl.alerts[i];
+                    final AlertModel alert = alertCtrl.alerts[i];
 
-                    //*________ Show fire dialog if unresolved_________
-                    if (a.status.toLowerCase() != 'resolved') {
-                      Future.microtask(
-                        () => _showFireDialog(context, alertCtrl, a),
-                      );
+                    // 🔕 If unresolved → show your *silent* Resolve dialog (no alarm/vibration)
+                    if (alert.status.toLowerCase() != 'resolved') {
+                      Future.microtask(() {
+                        showResolveDialog(
+                          alertId: alert.id,
+                          title: 'Resolve Alert?',
+                          body:
+                              'ALERT TYPE : ${alert.alertType}\n'
+                              'DEVICE     : ${alert.deviceHardwareIdentifier}\n'
+                              'STATUS     : ${alert.status}\n\n'
+                              'Mark this alert as resolved for everyone?',
+                        );
+                      });
                     }
-                    //*_______________________________________________
-                    //*________ Return alert card __________________//
+
+                    // Card UI
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 8),
                       child: ListTile(
                         leading: Icon(
-                          a.status.toLowerCase() == 'resolved'
+                          alert.status.toLowerCase() == 'resolved'
                               ? Icons.check_circle
                               : Icons.warning_amber_rounded,
-                          color:
-                              a.status.toLowerCase() == 'resolved'
-                                  ? Colors.green
-                                  : Colors.red,
+                          color: alert.status.toLowerCase() == 'resolved'
+                              ? Colors.green
+                              : Colors.red,
                         ),
                         title: Text(
-                          '${a.alertType.toUpperCase()} - ${a.status.toUpperCase()}',
+                          '${alert.alertType.toUpperCase()} - ${alert.status.toUpperCase()}',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text(
-                          'Device: ${a.deviceHardwareIdentifier}\n'
-                          'Triggered: ${a.triggeredAt}\n'
-                          'Resolved: ${a.resolvedAt ?? 'Pending'}',
+                          'Device: ${alert.deviceHardwareIdentifier}\n'
+                          'Triggered: ${alert.triggeredAt}\n'
+                          'Resolved: ${alert.resolvedAt ?? 'Pending'}',
                         ),
-                        onTap: () => _showDetailsDialog(context, a),
+                        onTap: () => _showDetailsDialog(context, alert),
                       ),
                     );
                   },
@@ -145,173 +146,77 @@ class AlertByDevicePage extends StatelessWidget {
     );
   }
 
-  //* Popup when an unresolved alert is detected:
-  //* ------------lets user resolve immediately----------------//
-  void _showFireDialog(
-    BuildContext context,
-    AlertController controller,
-    AlertModel a,
-  ) async {
-    print('🔥 Fire dialog triggered for alert: ${a.id}');
-    print('Playing alarm...');
-
-    final player = AudioPlayer();
-    //*---------------- 🔊 Start siren/alarm sound---------------------
-    await player.setReleaseMode(ReleaseMode.loop);
-    print('Release mode set');
-    await player.play(AssetSource('sounds/fire_alarm.mp3'), volume: 1.0);
-    print('Alarm sound played');
-    //*-------------- 📳 Start vibration if available---------
-    if (await Vibration.hasVibrator()) {
-      // pattern: [delay, vibrate, pause, vibrate, pause, ...]
-      Vibration.vibrate(
-        pattern: [0, 800, 400, 800, 400],
-        repeat: 0, // repeat from index 0 of the pattern
-      );
-    }
-    //*______________ 🔔 Show the fire alert dialog_________________
+  // Details dialog (unchanged)
+  void _showDetailsDialog(BuildContext context, AlertModel alert) {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder:
-          (_) => AlertDialog(
-            title: const Text(
-              '🔥 Fire Alert!',
-              style: TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Center(
+                child: Icon(Icons.info_outline, color: Colors.deepOrangeAccent, size: 44),
               ),
-            ),
-            content: _alertDialogText(
-              'ALERT TYPE : ${a.alertType}\n'
-              'DEVICE     : ${a.deviceHardwareIdentifier}\n'
-              'STATUS     : ${a.status}',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  await controller.resolveAlert(
-                    a.id,
-                  ); // calls /alerts/<id>/resolve/
-                  await player.stop(); // stop alarm sound
-                  Vibration.cancel(); // stop vibration
-                  if (context.mounted) Navigator.pop(context);
-                },
-                child: const Text(
-                  'Resolve',
-                  style: TextStyle(
-                    color: Colors.deepOrange,
+              const SizedBox(height: 8),
+              Center(
+                child: Text(
+                  'Alert #${alert.id}',
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 20,
+                    fontSize: 18,
+                    color: Colors.deepOrangeAccent,
                   ),
+                ),
+              ),
+              const Divider(height: 24),
+              _row('Device ID', alert.device.toString()),
+              _row('Hardware', alert.deviceHardwareIdentifier),
+              _row('Type', alert.alertType),
+              _row('Status', alert.status),
+              _row('Triggered At', alert.triggeredAt.toString()),
+              _row('Resolved At', alert.resolvedAt?.toString() ?? 'Pending'),
+              _row('Owner ID', alert.ownerId.toString()),
+              _row('Owner Email', alert.ownerEmail),
+              _row('Owner Phone', alert.ownerPhone.isEmpty ? 'N/A' : alert.ownerPhone),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.center,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                  label: const Text('Close', style: TextStyle(color: Colors.white)),
                 ),
               ),
             ],
           ),
+        ),
+      ),
     );
   }
 
-  //*______________ Full info dialog ____________________*//
-  void _showDetailsDialog(BuildContext context, AlertModel a) {
-    showDialog(
-      context: context,
-      builder:
-          (_) => Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Center(
-                    child: Icon(
-                      Icons.info_outline,
-                      color: Colors.deepOrangeAccent,
-                      size: 44,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      'Alert #${a.id}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: Colors.deepOrangeAccent,
-                      ),
-                    ),
-                  ),
-                  const Divider(height: 24),
-                  _row('Device ID', a.device.toString()),
-                  _row('Hardware', a.deviceHardwareIdentifier),
-                  _row('Type', a.alertType),
-                  _row('Status', a.status),
-                  _row('Triggered At', a.triggeredAt.toString()),
-                  _row('Resolved At', a.resolvedAt?.toString() ?? 'Pending'),
-                  _row('Owner ID', a.ownerId.toString()),
-                  _row('Owner Email', a.ownerEmail),
-                  _row(
-                    'Owner Phone',
-                    a.ownerPhone.isEmpty ? 'N/A' : a.ownerPhone,
-                  ),
-                  const SizedBox(height: 16),
-                  Align(
-                    alignment: Alignment.center,
-                    child: ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
-                      label: const Text(
-                        'Close',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
+  Widget _row(String keyText, String valueText) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Text(
+                '$keyText:',
+                style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black54),
               ),
             ),
-          ),
-    );
-  }
-
-  //*______________ Detail row widget ____________________*//
-  Widget _row(String k, String v) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 3,
-          child: Text(
-            '$k:',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.black54,
+            Expanded(
+              flex: 5,
+              child: Text(
+                valueText,
+                style: const TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold),
+              ),
             ),
-          ),
+          ],
         ),
-        Expanded(
-          flex: 5,
-          child: Text(
-            v,
-            style: const TextStyle(
-              color: Colors.deepOrange,
-              fontWeight: FontWeight.bold, // value in deep orange
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-//*__________________Alert Dialog Text__________________*//
-Widget _alertDialogText(String text) {
-  return Text(
-    text,
-    style: const TextStyle(
-      fontSize: 16,
-      color: Colors.black87,
-    ),
-  );
+      );
 }

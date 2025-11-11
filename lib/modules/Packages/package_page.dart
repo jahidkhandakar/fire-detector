@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+
 import '/modules/ShurjoPay/shurjopay_controller.dart';
 import '/others/widgets/package_selector.dart';
 import '/others/utils/api.dart';
 import '/modules/Packages/package_controller.dart';
 import '/modules/Packages/package_model.dart';
+import '/modules/users/user_controller.dart';
+import '/modules/users/user_model.dart';
+import '/modules/orders/order_controller.dart';
+import '/modules/orders/order_model.dart';
+import 'package:get_storage/get_storage.dart';
 
 class PackagePage extends StatefulWidget {
   const PackagePage({super.key});
@@ -15,7 +21,10 @@ class PackagePage extends StatefulWidget {
 }
 
 class _PackagePageState extends State<PackagePage> {
-  final PackageController _controller = Get.put(PackageController());
+  final PackageController _pkgCtrl = Get.put(PackageController());
+  final OrderController _orderCtrl = Get.put(OrderController(), permanent: true);
+  final UserController _userCtrl = Get.put(UserController(), permanent: true);
+
   final String apiUrl = Api.packages;
   final _currency = NumberFormat.currency(locale: 'en_BD', symbol: '৳');
 
@@ -26,8 +35,8 @@ class _PackagePageState extends State<PackagePage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_controller.packages.isEmpty && !_controller.isLoading.value) {
-        _controller.loadPackages(apiUrl: apiUrl);
+      if (_pkgCtrl.packages.isEmpty && !_pkgCtrl.isLoading.value) {
+        _pkgCtrl.loadPackages(apiUrl: apiUrl);
       }
     });
   }
@@ -36,23 +45,23 @@ class _PackagePageState extends State<PackagePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Obx(() {
-        if (_controller.isLoading.value) {
+        if (_pkgCtrl.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (_controller.error.isNotEmpty) {
-          return Center(child: Text(_controller.error.value));
+        if (_pkgCtrl.error.isNotEmpty) {
+          return Center(child: Text(_pkgCtrl.error.value));
         }
-        if (_controller.packages.isEmpty) {
+        if (_pkgCtrl.packages.isEmpty) {
           return const Center(child: Text('No packages available.'));
         }
 
         return RefreshIndicator(
-          onRefresh: () => _controller.loadPackages(apiUrl: apiUrl),
+          onRefresh: () => _pkgCtrl.loadPackages(apiUrl: apiUrl),
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
-            itemCount: _controller.packages.length,
+            itemCount: _pkgCtrl.packages.length,
             itemBuilder: (context, index) {
-              final pkg = _controller.packages[index];
+              final pkg = _pkgCtrl.packages[index];
               return _buildPackageCard(pkg);
             },
           ),
@@ -63,7 +72,7 @@ class _PackagePageState extends State<PackagePage> {
 
   Widget _buildPackageCard(PackageModel pkg) {
     final masters = masterQtyByPackage[pkg.id] ?? pkg.minQuantity;
-    final slaves = slaveQtyByPackage[pkg.id] ?? 0;
+    final slaves = slaveQtyByPackage[pkg.id] ?? pkg.minQuantity;
 
     final devices = masters + slaves;
     final upfrontDevicesCost = pkg.pricePerDevice * devices;
@@ -142,8 +151,8 @@ class _PackagePageState extends State<PackagePage> {
                       min: pkg.minQuantity,
                       max: pkg.maxQuantity,
                       initial: masters,
-                      onChanged:
-                          (v) => setState(() => masterQtyByPackage[pkg.id] = v),
+                      onChanged: (v) =>
+                          setState(() => masterQtyByPackage[pkg.id] = v),
                     ),
                   ],
                 ),
@@ -161,11 +170,11 @@ class _PackagePageState extends State<PackagePage> {
                     ),
                     const SizedBox(height: 2),
                     PackageSelector(
-                      min: 0,
+                      min: pkg.minQuantity,
                       max: pkg.maxQuantity,
                       initial: slaves,
-                      onChanged:
-                          (v) => setState(() => slaveQtyByPackage[pkg.id] = v),
+                      onChanged: (v) =>
+                          setState(() => slaveQtyByPackage[pkg.id] = v),
                     ),
                   ],
                 ),
@@ -185,7 +194,7 @@ class _PackagePageState extends State<PackagePage> {
             const SizedBox(height: 8),
             Center(
               child: Text(
-                'First month MRF (masters only): ${firstMonthMrf == 0 ? '—' : _currency.format(firstMonthMrf)}',
+                'First month MRF (masters only): ${firstMonthMrf == 0 ? "—" : _currency.format(firstMonthMrf)}',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   color: Colors.grey[800],
@@ -217,60 +226,7 @@ class _PackagePageState extends State<PackagePage> {
                 ),
                 const SizedBox(width: 8),
                 FilledButton.icon(
-                  onPressed: () async {
-                    if (totalNow <= 0) {
-                      Get.snackbar('Payment', 'Amount must be greater than 0');
-                      return;
-                    }
-                    final payCtrl = Get.put(ShurjoPayController());
-
-                    // 🔐 Use your provided fixed values for body:
-                    final init = await payCtrl.startPayment({
-                      "reference": "${pkg.id}",
-                      "amount": totalNow, // MUST be > 0
-                      "currency": "BDT",
-                      "customer_name": "Jahid",
-                      "customer_address": "Badda",
-                      "customer_phone": "01700000000",
-                      "customer_city": "Dhaka",
-                      "customer_post_code": "1212",
-                      "customer_email": "admin@admin.com",
-                    });
-
-                    if (init != null && init.checkoutUrl.isNotEmpty) {
-                      final orderIdForVerify =
-                          init.spOrderId.isNotEmpty
-                              ? init.spOrderId
-                              : init.transactionId.toString();
-
-                      // Await result from checkout (true=paid, false/cancel)
-                      final ok = await Get.toNamed(
-                        '/checkout',
-                        arguments: {
-                          'checkoutUrl': init.checkoutUrl,
-                          'orderId': orderIdForVerify,
-                          'transactionId':
-                              init.transactionId, // you can use this with /status
-                        },
-                      );
-
-                      if (ok == true) {
-                        Get.snackbar(
-                          'Order',
-                          'Your order has been confirmed ✅',
-                        );
-                      } else {
-                        Get.snackbar('Order', 'Payment did not complete');
-                      }
-                    } else {
-                      Get.snackbar(
-                        'Error',
-                        payCtrl.error.value.isNotEmpty
-                            ? payCtrl.error.value
-                            : 'Failed to start payment',
-                      );
-                    }
-                  },
+                  onPressed: () => _handleSelect(pkg, masters, slaves, totalNow),
                   icon: const Icon(Icons.shopping_cart_checkout),
                   label: const Text('Select'),
                 ),
@@ -279,6 +235,200 @@ class _PackagePageState extends State<PackagePage> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _handleSelect(
+    PackageModel pkg,
+    int masters,
+    int slaves,
+    double totalNow,
+  ) async {
+    if (totalNow <= 0) {
+      Get.snackbar('Payment', 'Amount must be greater than 0');
+      return;
+    }
+
+    final userId = _userCtrl.getStoredUserId();
+    if (userId == null) {
+      Get.snackbar('Order', 'Please login first');
+      return;
+    }
+
+    // pull user info (safe fallbacks)
+    final UserModel? u = _userCtrl.me.value;
+    final String customerName = (u?.fullName?.trim().isNotEmpty ?? false)
+        ? u!.fullName!.trim()
+        : (u?.email.split('@').first ?? 'Customer');
+    final String customerAddress =
+        (u?.address?.trim().isNotEmpty ?? false) ? u!.address!.trim() : 'Dhaka, Bangladesh';
+    final String customerPhone =
+        (u?.phoneNumber.trim().isNotEmpty ?? false) ? u!.phoneNumber.trim() : '01700000000';
+    final String customerEmail =
+        (u?.email.trim().isNotEmpty ?? false) ? u!.email.trim() : 'customer@example.com';
+    const String customerCity = 'Dhaka';
+    const String customerPostCode = '1212';
+
+    // 1) Create Order FIRST (server source of truth) — note `package_id`
+    final int devices = masters + slaves;
+
+    final orderBody = {
+      "package_id": pkg.id, // ✅ server expects `package_id`
+      "quantity": devices,
+      "amount": totalNow.toStringAsFixed(2), // if server expects number, send `totalNow`
+      "currency": "BDT",
+      "number_of_master_devices": masters,
+      "number_of_slave_devices": slaves,
+      "customer_name": customerName,
+      "customer_address": customerAddress,
+      "customer_phone": customerPhone,
+      "customer_city": customerCity,
+      "customer_post_code": customerPostCode,
+      "customer_email": customerEmail,
+      // "shipping_address": customerAddress, // (optional)
+    };
+
+    // 🔍 Visibility for debugging
+    debugPrint('🧾 About to create order with body => $orderBody');
+    debugPrint('🔐 Access token exists? ${GetStorage().hasData("access")}');
+
+    OrderModel? created;
+    try {
+      created = await _orderCtrl.createOrder(userId: userId, body: orderBody);
+    } catch (e) {
+      Get.snackbar('Order', 'Failed to create order');
+      return;
+    }
+
+    if (created == null) {
+      final errText =
+          _orderCtrl.error.value.isNotEmpty ? _orderCtrl.error.value : 'Failed to create order';
+      Get.snackbar('Order', errText, duration: const Duration(seconds: 4));
+      return;
+    }
+
+    // 2) Initiate ShurjoPay using server order data (reference/amount)
+    final payCtrl = Get.put(ShurjoPayController());
+    final double amountFromServer = double.tryParse(created.amount) ?? totalNow;
+
+    final init = await payCtrl.startPayment({
+      "reference": created.reference, // tie payment to server order
+      "amount": amountFromServer,
+      "currency": created.currency.isNotEmpty ? created.currency : "BDT",
+      "customer_name": customerName,
+      "customer_address": customerAddress,
+      "customer_phone": customerPhone,
+      "customer_city": customerCity,
+      "customer_post_code": customerPostCode,
+      "customer_email": customerEmail,
+    });
+
+    if (init == null || init.checkoutUrl.isEmpty) {
+      Get.snackbar(
+        'Error',
+        payCtrl.error.value.isNotEmpty ? payCtrl.error.value : 'Failed to start payment',
+      );
+      _markLocalOrderStatus(_orderCtrl, created, 'not_paid');
+      await _orderCtrl.loadOrders(userId: userId);
+      return;
+    }
+
+    final orderIdForVerify =
+        init.spOrderId.isNotEmpty ? init.spOrderId : init.transactionId.toString();
+
+    // 3) Open checkout — expects a Map result {kind: return|cancel|error, orderId?}
+    final result = await Get.toNamed(
+      '/checkout',
+      arguments: {
+        'checkoutUrl': init.checkoutUrl,
+        'orderId': orderIdForVerify,
+        'transactionId': init.transactionId,
+      },
+    );
+
+    print('🔁 Returned from Checkout with: $result');
+
+    // 4) Verify and show only one snackbar
+    bool paid = false;
+    String verifyId = orderIdForVerify;
+
+    if (result is Map) {
+      final kind = result['kind'];
+      if (result['orderId'] is String && (result['orderId'] as String).isNotEmpty) {
+        verifyId = result['orderId'] as String;
+      }
+
+      if (kind == 'return') {
+        final ret = await payCtrl.returnPayment(verifyId);
+        paid = ret != null && _isSuccess(ret);
+        print('🧪 Return verify: paid=$paid, sp_code=${ret?.spCode}');
+
+        if (!paid) {
+          final ver = await payCtrl.verifyPayment(verifyId);
+          paid = ver != null && _isSuccess(ver);
+          print('🧪 POST verify: paid=$paid, sp_code=${ver?.spCode}');
+        }
+      } else if (kind == 'cancel') {
+        paid = false;
+        print('🚪 User cancelled the checkout.');
+      } else if (kind == 'error') {
+        paid = false;
+        print('⚠️ Checkout error: ${result['reason']} ${result['detail'] ?? ''}');
+      }
+    } else {
+      // Fallback if older route returns bool
+      paid = (result == true);
+    }
+
+    if (paid) {
+      print('🔔 SNACK [Payment]: Payment successful ✅');
+      Get.snackbar('Payment', 'Payment successful ✅');
+      _markLocalOrderStatus(_orderCtrl, created, 'paid');
+      await _orderCtrl.loadOrders(userId: userId);
+      Get.toNamed('/index', arguments: {'tab': 3}); // → History tab
+    } else {
+      print('🔔 SNACK [Payment]: Payment cancelled/failed');
+      Get.snackbar('Payment', 'Payment cancelled');
+      _markLocalOrderStatus(_orderCtrl, created, 'not_paid');
+      await _orderCtrl.loadOrders(userId: userId);
+    }
+  }
+
+  // success iff spCode == '1000'
+  bool _isSuccess(dynamic verifyOrReturnModel) {
+    try {
+      final spCode = verifyOrReturnModel.spCode?.toString();
+      return spCode == '1000';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _markLocalOrderStatus(OrderController ctrl, OrderModel created, String status) {
+    final idx = ctrl.orders.indexWhere((o) => o.id == created.id);
+    if (idx == -1) return;
+    final curr = ctrl.orders[idx];
+    ctrl.orders[idx] = OrderModel(
+      id: curr.id,
+      user: curr.user,
+      packageId: curr.packageId,
+      quantity: curr.quantity,
+      amount: curr.amount,
+      currency: curr.currency,
+      reference: curr.reference,
+      customerName: curr.customerName,
+      customerAddress: curr.customerAddress,
+      customerPhone: curr.customerPhone,
+      customerCity: curr.customerCity,
+      customerPostCode: curr.customerPostCode,
+      customerEmail: curr.customerEmail,
+      orderStatus: status,
+      gatewayTransactionId: curr.gatewayTransactionId,
+      gatewayResponse: curr.gatewayResponse,
+      shippingAddress: curr.shippingAddress,
+      numberOfMasterDevices: curr.numberOfMasterDevices,
+      numberOfSlaveDevices: curr.numberOfSlaveDevices,
+      orderedAt: curr.orderedAt,
     );
   }
 
@@ -359,18 +509,9 @@ class _PackagePageState extends State<PackagePage> {
                 ),
                 const SizedBox(height: 8),
                 _kvRow('ID', pkg.id.toString()),
-                _kvRow(
-                  'Quantity Range',
-                  '${pkg.minQuantity} – ${pkg.maxQuantity}',
-                ),
-                _kvRow(
-                  'Price per Device',
-                  _currency.format(pkg.pricePerDevice),
-                ),
-                _kvRow(
-                  'MRF (per master)',
-                  pkg.mrf == 0 ? '—' : _currency.format(pkg.mrf),
-                ),
+                _kvRow('Quantity Range', '${pkg.minQuantity} – ${pkg.maxQuantity}'),
+                _kvRow('Price per Device', _currency.format(pkg.pricePerDevice)),
+                _kvRow('MRF (per master)', pkg.mrf == 0 ? '—' : _currency.format(pkg.mrf)),
                 const SizedBox(height: 16),
               ],
             ),

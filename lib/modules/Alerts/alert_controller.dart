@@ -73,4 +73,35 @@ class AlertController extends GetxController {
       print('Error resolving alert: $e');
     }
   }
+
+  //*-------- 🔹 Acknowledge alert and update status locally----------
+  Future<void> acknowledgeAlert(int alertId) async {
+    try {
+      final success = await _service.acknowledgeAlert(
+        baseUrl: Api.baseUrl,
+        alertId: alertId,
+      );
+      if (success) {
+        final index = alerts.indexWhere((a) => a.id == alertId);
+        if (index != -1) {
+          alerts[index] = AlertModel(
+            id: alerts[index].id,
+            device: alerts[index].device,
+            deviceHardwareIdentifier: alerts[index].deviceHardwareIdentifier,
+            alertType: alerts[index].alertType,
+            status: 'Open', // No change in status on acknowledge
+            triggeredAt: alerts[index].triggeredAt,
+            resolvedAt: alerts[index].resolvedAt,
+            ownerId: alerts[index].ownerId,
+            ownerEmail: alerts[index].ownerEmail,
+            ownerPhone: alerts[index].ownerPhone,
+          );
+          alerts.refresh();
+        }
+      }
+    } catch (e) {
+      error('Failed to acknowledge alert: $e');
+      print('Error acknowledging alert: $e');
+    }
+  }
 }

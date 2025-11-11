@@ -3,6 +3,7 @@ import '/modules/users/user_model.dart';
 import '/others/theme/app_theme.dart';
 import '/others/utils/api.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class CustomDrawer extends StatefulWidget {
   final ValueChanged<int>? onTabSelected;
@@ -14,13 +15,20 @@ class CustomDrawer extends StatefulWidget {
 }
 
 class _CustomDrawerState extends State<CustomDrawer> {
-  final _user = UserController();
+  // ✅ CHANGED: use GetX-managed controller instead of creating plain instance
+  late final UserController _userController;
   late Future<UserModel> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _user.fetchUserDetails(api: Api.userDetails);
+
+    // ✅ CHANGED: register or retrieve controller from GetX (global instance)
+    // If you already use an InitialBinding for UserController, use Get.find()
+    _userController = Get.put(UserController(), permanent: true);
+
+    // Fetch current user details from backend
+    _future = _userController.fetchUserDetails(api: Api.userDetails);
   }
 
   @override
@@ -48,7 +56,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
           return Column(
             children: [
-              // Drawer Header (non-tappable)
+              // ─────────── Drawer Header ─────────── //
               Container(
                 decoration: BoxDecoration(gradient: AppTheme.fireGradient),
                 padding: const EdgeInsets.symmetric(vertical: 32),
@@ -59,11 +67,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     const CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.white24,
-                      child: Icon(
-                        Icons.person,
-                        size: 48,
-                        color: Colors.white,
-                      ),
+                      child: Icon(Icons.person, size: 48, color: Colors.white),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -88,25 +92,19 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 ),
               ),
 
-              // Drawer Items
+              // ─────────── Drawer Items ─────────── //
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
                     if (email.isNotEmpty)
                       ListTile(
-                        leading: const Icon(
-                          Icons.email,
-                          color: Colors.deepOrange,
-                        ),
+                        leading: const Icon(Icons.email, color: Colors.deepOrange),
                         title: Text(email),
                       ),
                     if (role.isNotEmpty)
                       ListTile(
-                        leading: const Icon(
-                          Icons.verified_user,
-                          color: Colors.deepOrange,
-                        ),
+                        leading: const Icon(Icons.verified_user, color: Colors.deepOrange),
                         title: Text('Role: $role'),
                       ),
                     const SizedBox(height: 16),
@@ -121,11 +119,12 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
               const Divider(),
 
-              // Logout Button (pinned bottom)
+              //* ─────────── Logout Button ─────────── //
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.redAccent),
                 title: const Text("Logout"),
                 onTap: () async {
+                  // ✅ Confirmation dialog before logout
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
@@ -149,9 +148,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                         ),
                         const SizedBox(width: 16),
                         TextButton(
-                          onPressed: () {
-                            Navigator.pop(ctx, true);
-                          },
+                          onPressed: () => Navigator.pop(ctx, true),
                           child: const Text("Logout"),
                         ),
                       ],
@@ -159,9 +156,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   );
 
                   if (confirm == true && context.mounted) {
-                    // TODO: call your AuthService.logout() here if needed
-                    _user.clearCachedUser();
-                    Navigator.pushReplacementNamed(context, "/login");
+                    await _userController.logout(context);
                   }
                 },
               ),

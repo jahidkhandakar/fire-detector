@@ -1,75 +1,168 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '/modules/orders/order_controller.dart';
+import '/modules/orders/order_model.dart';
+import '/modules/users/user_controller.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Example history data
-    final List<Map<String, String>> history = [
-      {
-        'event': 'Fire Alarm Triggered',
-        'details': 'Building B, Floor 3',
-        'date': 'Sep 3, 2025 - 14:32',
-      },
-      {
-        'event': 'System Test',
-        'details': 'All sensors checked',
-        'date': 'Sep 2, 2025 - 09:15',
-      },
-      {
-        'event': 'Sensor Restored',
-        'details': 'Sensor #7 online',
-        'date': 'Sep 1, 2025 - 17:48',
-      },
-    ];
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
 
+class _HistoryScreenState extends State<HistoryScreen> {
+  late final OrderController _orderCtrl;
+  late final UserController _userCtrl;
+
+  // 0 = All, 1 = Paid
+  int _filterIndex = 1; // default Paid
+
+  @override
+  void initState() {
+    super.initState();
+    // Reuse if already created; otherwise put
+    _orderCtrl = Get.isRegistered<OrderController>()
+        ? Get.find<OrderController>()
+        : Get.put(OrderController(), permanent: true);
+
+    _userCtrl = Get.isRegistered<UserController>()
+        ? Get.find<UserController>()
+        : Get.put(UserController(), permanent: true);
+
+    // Load AFTER first frame to avoid Obx mutation during build
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final userId = _userCtrl.getStoredUserId();
+      if (userId != null) {
+        await _orderCtrl.loadOrders(userId: userId);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      body:
-          history.isEmpty
-              ? const Center(
-                child: Text(
-                  'No history records found.',
-                  style: TextStyle(fontSize: 18, color: Colors.black54),
-                ),
-              )
-              : ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: history.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final record = history[index];
-                  return Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      leading: const Icon(
-                        Icons.history,
-                        color: Colors.redAccent,
-                        size: 32,
-                      ),
-                      title: Text(
-                        record['event'] ?? '',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 17,
-                          color: Colors.redAccent,
-                        ),
-                      ),
-                      subtitle: Text(
-                        record['details'] ?? '',
-                        style: const TextStyle(fontSize: 15),
-                      ),
-                      trailing: Text(
-                        record['date'] ?? '',
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  );
-                },
+      body: Obx(() {
+        if (_orderCtrl.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (_orderCtrl.error.value.isNotEmpty) {
+          return Center(child: Text(_orderCtrl.error.value));
+        }
+
+        final List<OrderModel> source = _orderCtrl.orders;
+        final List<OrderModel> items = _filterIndex == 1
+            ? source.where((o) => o.orderStatus == 'paid').toList()
+            : source;
+
+        if (items.isEmpty) {
+          return _emptyState(
+            title: _filterIndex == 1 ? 'No paid history yet' : 'No orders yet',
+            subtitle: _filterIndex == 1
+                ? 'Your successful payments will appear here.'
+                : 'Create an order to see it here.',
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            final userId = _userCtrl.getStoredUserId();
+            if (userId != null) {
+              debugPrint('↻ Refreshing history for user=$userId');
+              await _orderCtrl.loadOrders(userId: userId);
+            }
+          },
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) => _HistoryTile(order: items[index]),
+          ),
+        );
+      }),
+
+      // Filter toggler at bottom
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: SegmentedButton<int>(
+            segments: const [
+              ButtonSegment(value: 0, label: Text('All')),
+              ButtonSegment(value: 1, label: Text('Paid')),
+            ],
+            selected: {_filterIndex},
+            onSelectionChanged: (s) => setState(() => _filterIndex = s.first),
+            showSelectedIcon: false,
+          ),
+        ),
+      ),
+    );
+  }
+
+  //*___________________ Empty State Widget ____________________*//
+  Widget _emptyState({required String title, required String subtitle}) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _filterIndex == 1 ? Icons.receipt_long : Icons.shopping_bag_outlined,
+                color: Colors.deepOrange,
+                size: 56,
               ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16, 
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: const TextStyle(color: Colors.black54),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+class _HistoryTile extends StatelessWidget {
+  final OrderModel order;
+  const _HistoryTile({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final isPaid = order.orderStatus == 'paid';
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: Icon(
+          isPaid ? Icons.check_circle : Icons.pending_actions,
+          color: isPaid ? Colors.green : Colors.orange,
+          size: 30,
+        ),
+        title: Text(
+          'Order #${order.reference}',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: isPaid ? Colors.green : Colors.orange,
+          ),
+        ),
+        subtitle: Text(
+          '৳${order.amount} ${order.currency} • ${order.orderStatus.toUpperCase()}\n${order.orderedAt.toLocal()}',
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+        onTap: () {},
+      ),
     );
   }
 }

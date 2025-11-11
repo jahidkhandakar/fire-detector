@@ -4,42 +4,72 @@ import '/modules/users/user_controller.dart';
 import '/modules/orders/order_controller.dart';
 import '/modules/orders/order_model.dart';
 
-class OrderPage extends StatelessWidget {
+class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
 
   @override
+  State<OrderPage> createState() => _OrderPageState();
+}
+
+class _OrderPageState extends State<OrderPage> {
+  late final OrderController _controller;
+  late final UserController _userController;
+  int? _userId;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Get.isRegistered<OrderController>()
+        ? Get.find<OrderController>()
+        : Get.put(OrderController());
+
+    _userController = Get.isRegistered<UserController>()
+        ? Get.find<UserController>()
+        : Get.put(UserController());
+
+    _userId = _userController.getStoredUserId();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_userId != null) {
+        await _controller.loadOrders(userId: _userId!);
+      } else {
+        _controller.error.value = 'User ID not found.';
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = Get.put(OrderController());
-    final userController = Get.put(UserController());
-    final userId = userController.getStoredUserId();
-
-    if (userId != null) controller.loadOrders(userId: userId);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Orders'),
         backgroundColor: Colors.deepOrange,
       ),
       body: Obx(() {
-        if (controller.isLoading.value) {
+        if (_controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (controller.error.isNotEmpty) {
-          return Center(child: Text(controller.error.value));
+        if (_controller.error.isNotEmpty) {
+          return Center(child: Text(_controller.error.value));
         }
 
-        if (controller.orders.isEmpty) {
+        if (_controller.orders.isEmpty) {
           return _buildEmptyState(context);
         }
 
         return RefreshIndicator(
-          onRefresh: () => controller.loadOrders(userId: userId!),
+          onRefresh: () async {
+            if (_userId != null) {
+              debugPrint('↻ Refreshing orders for user=$_userId');
+              await _controller.loadOrders(userId: _userId!);
+            }
+          },
           child: ListView.builder(
             padding: const EdgeInsets.only(bottom: 100),
-            itemCount: controller.orders.length,
+            itemCount: _controller.orders.length,
             itemBuilder: (context, index) {
-              final order = controller.orders[index];
+              final order = _controller.orders[index];
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 elevation: 3,
@@ -68,63 +98,55 @@ class OrderPage extends StatelessWidget {
         );
       }),
 
-      // ✅ Floating button — now navigates to Packages tab in IndexPage
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Colors.deepOrange,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_shopping_cart),
         label: const Text('Order a new package'),
-        onPressed: () {
-          Get.toNamed('/index', arguments: {'tab': 2});
-        },
+        onPressed: () => Get.toNamed('/index', arguments: {'tab': 2}),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
-  //*__________________Empty state when no orders found_________________*//
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.inventory_outlined,
-                color: Colors.deepOrange, size: 60),
-            const SizedBox(height: 16),
-            const Text(
-              'No orders found',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'You haven’t ordered any packages yet.\nTap below to get started!',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 25),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.shopping_cart_checkout),
-              label: const Text('Order a new package'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepOrange,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+  Widget _buildEmptyState(BuildContext context) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.inventory_outlined,
+                  color: Colors.deepOrange, size: 60),
+              const SizedBox(height: 16),
+              const Text(
+                'No orders found',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
-              // ✅ Same navigation fix here
-              onPressed: () => Get.toNamed('/index', arguments: {'tab': 2}),
-            ),
-          ],
+              const SizedBox(height: 10),
+              const Text(
+                'You haven’t ordered any packages yet.\nTap below to get started!',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.black54),
+              ),
+              const SizedBox(height: 25),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.shopping_cart_checkout),
+                label: const Text('Order a new package'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepOrange,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => Get.toNamed('/index', arguments: {'tab': 2}),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
 
-  //*__________________Order details dialog_________________*//
   void _showOrderDetailsDialog(BuildContext context, OrderModel order) {
     showDialog(
       context: context,
@@ -185,7 +207,6 @@ class OrderPage extends StatelessWidget {
     );
   }
 
-  //*____________Widget for rows in order details dialog___________*//
   Widget _row(String label, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(

@@ -1,11 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-
+    <!-- Needed for heads-up notifications on Android 13+ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- For vibration with local notifications -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!--Full Screen Intent-->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <application
         android:label="Fire Alarm"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- Tells FCM which default channel to use if none is specified -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="high_smoke_alerts_v2" />
 
         <activity
             android:name=".MainActivity"
