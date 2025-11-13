@@ -15,15 +15,27 @@ class AppDialogText {
   static const resolve      = 'Resolve';
 }
 
+AlertController? _getAlertControllerOrNull() {
+  if (Get.isRegistered<AlertController>()) {
+    return Get.find<AlertController>();
+  }
+  try {
+    // Lazily register so dialogs work anywhere in the app.
+    return Get.put<AlertController>(AlertController(), permanent: true);
+  } catch (_) {
+    return null;
+  }
+}
+
 Future<void> showSilenceAlarmDialog({
   required String title,
   required String body,
-  int? alertId, // optional: if present, we’ll call acknowledge on tap
+  int? alertId, // optional: acknowledge on backend if present
 }) async {
   final alarm = ensureAlarm();
-  final alertController = Get.find<AlertController>();
+  final alertController = _getAlertControllerOrNull();
 
-  // Make sure alarm is running (caller may have started it already)
+  // Ensure alarm is running (caller may have started it already)
   if (!alarm.isActive) {
     await alarm.start();
   }
@@ -34,7 +46,7 @@ Future<void> showSilenceAlarmDialog({
   await Get.dialog(
     AlertDialog(
       backgroundColor: Colors.white,
-      surfaceTintColor: Colors.orangeAccent,
+      //surfaceTintColor: Colors.orangeAccent,
       title: Text(
         title.isNotEmpty ? title : AppDialogText.silenceTitle,
         style: const TextStyle(
@@ -56,7 +68,7 @@ Future<void> showSilenceAlarmDialog({
               onPressed: () => Get.back(), // keep ringing, just close dialog
               child: const Text(
                 AppDialogText.keepRinging,
-                style: TextStyle(color: Color(0xFF018505)),
+                style: TextStyle(color: Color.fromARGB(255, 13, 13, 13)),
               ),
             ),
             const SizedBox(width: 12),
@@ -64,16 +76,15 @@ Future<void> showSilenceAlarmDialog({
               icon: const Icon(Icons.volume_off),
               style: FilledButton.styleFrom(backgroundColor: Colors.white),
               onPressed: () async {
-                // optional: acknowledge on backend
-                if (alertId != null && alertId > 0) {
-                  await alertController.acknowledgeAlert(alertId);
+                if (alertId != null && alertId > 0 && alertController != null) {
+                  try { await alertController.acknowledgeAlert(alertId); } catch (_) {}
                 }
                 await alarm.stop();
-                Get.back(); // close dialog
+                Get.back();
               },
               label: const Text(
                 AppDialogText.acknowledge,
-                style: TextStyle(color: Colors.deepOrange),
+                style: TextStyle(color: Color(0xFFE40404)),
               ),
             ),
           ],
@@ -84,19 +95,22 @@ Future<void> showSilenceAlarmDialog({
   );
 }
 
+/// Silent resolve dialog (no sound/vibration).
+/// Also stops any ongoing alarm after a successful resolve.
 Future<void> showResolveDialog({
   required int alertId,
   String? title,
   String? body,
-}) {
-  final alertController = Get.find<AlertController>();
+}) async {
+  final alertController = _getAlertControllerOrNull();
 
   // No stacking
   if (Get.isDialogOpen == true) Get.back();
 
-  return Get.defaultDialog(
+  await Get.defaultDialog(
     title: (title == null || title.isEmpty) ? AppDialogText.resolveTitle : title,
     middleText: (body == null || body.isEmpty) ? AppDialogText.resolveBody : body,
+    middleTextStyle: const TextStyle(fontSize: 14, color: Color.fromARGB(255, 97, 4, 4)),
     barrierDismissible: false,
     radius: 12,
     actions: [
@@ -104,9 +118,13 @@ Future<void> showResolveDialog({
         onPressed: () => Get.back(),
         child: const Text(AppDialogText.cancel),
       ),
+      SizedBox(width: 12),
       FilledButton(
         onPressed: () async {
-          await alertController.resolveAlert(alertId);
+          if (alertController != null) {
+            try { await alertController.resolveAlert(alertId); } catch (_) {}
+          }
+          try { await ensureAlarm().stop(); } catch (_) {}
           Get.back();
         },
         child: const Text(AppDialogText.resolve),

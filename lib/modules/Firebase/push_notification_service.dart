@@ -12,19 +12,25 @@ import '/others/widgets/custom_dialog.dart' as ui;       // showSilenceAlarmDial
 import '/modules/Firebase/message.dart';                 // AppMessages, FirebaseMessage
 
 class PushNotificationService {
-  // ---- one-time init guard ----
+  // ─────────────────────────────────────────────────────────────────────────────
+  // storage keys (for backend device row id + last token)
+  // ─────────────────────────────────────────────────────────────────────────────
+  static const String _kStoredFcmDeviceIdKey = 'fcm_device_id';
+  static const String _kStoredFcmTokenKey    = 'fcm_registration_token';
+
+  // one-time init guard
   static bool _initialized = false;
 
-  // ---- firebase + local notif clients ----
+  // firebase + local notif clients
   static final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
   static final http.Client _http = http.Client();
 
-  // ---- de-dupe recent alerts (tray/snackbar spam) ----
+  // de-dupe recent alerts (tray/snackbar spam)
   static final Map<String, DateTime> _recentKeys = <String, DateTime>{};
   static const Duration _dedupeTtl = Duration(minutes: 2);
 
-  // ---- show Acknowledge dialog only once per alert (works for fg + tap) ----
+  // show Acknowledge dialog only once per alert (works for fg + tap)
   static final Set<String> _ackDialogShown = <String>{};
   static String _ackKeyFor(FirebaseMessage m) {
     if (m.alertId > 0) return 'id:${m.alertId}';
@@ -33,6 +39,9 @@ class PushNotificationService {
     return 'tb:${m.title ?? ''}|${m.body ?? ''}';
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // PUBLIC API
+  // ─────────────────────────────────────────────────────────────────────────────
   static Future<void> initialize() async {
     if (_initialized) return;
     _initialized = true;
@@ -43,9 +52,7 @@ class PushNotificationService {
     // 1) Permissions
     await _fcm.requestPermission(alert: true, badge: true, sound: true);
     await _fcm.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
+      alert: true, badge: true, sound: true,
     );
 
     // 2) Local notifications init
@@ -62,8 +69,7 @@ class PushNotificationService {
             final map = jsonDecode(payload) as Map<String, dynamic>;
             _routeFromPayload(map, armAfterRoute: true);
           } catch (_) {
-            // Fall back to Alerts screen
-            Get.toNamed('/alerts');
+            Get.toNamed('/alerts'); // fallback
           }
         } else {
           Get.toNamed('/alerts');
@@ -75,7 +81,7 @@ class PushNotificationService {
     final androidImpl =
         _local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
-    // Loud channel (with siren) — MUST match AndroidManifest default channel
+    // Loud channel (with siren)
     await androidImpl?.createNotificationChannel(
       const AndroidNotificationChannel(
         AppMessages.loudChannelId,
@@ -107,25 +113,26 @@ class PushNotificationService {
     }
     _fcm.onTokenRefresh.listen((t) async => _registerDeviceToken(t));
 
-    // 5) Foreground messages
+    // 5) Foreground messages — never early-return before trying the dialog
     FirebaseMessaging.onMessage.listen((RemoteMessage rm) async {
       final msg = FirebaseMessage.fromRemoteMessage(rm);
 
-      // Deduplicate frequent repeats for a short window
+      // Only suppress snackbar/tray for duplicates, not the dialog
       _recentKeys.removeWhere((_, exp) => DateTime.now().isAfter(exp));
       final key = msg.dedupeKey.trim();
+      bool isDuplicateWithinTtl = false;
       if (key.isNotEmpty) {
         if (_recentKeys.containsKey(key)) {
-          debugPrint('⏭️ Skipping duplicate alert within TTL: $key');
-          return;
+          isDuplicateWithinTtl = true;
+        } else {
+          _recentKeys[key] = DateTime.now().add(_dedupeTtl);
         }
-        _recentKeys[key] = DateTime.now().add(_dedupeTtl);
       }
 
       final isLoggedIn = _isLoggedIn();
 
-      // Optional: show snackbar only if we have text
-      if (msg.hasExplicitText) {
+      // Heads-up snackbar only if we have text and it's not a duplicate
+      if (msg.hasExplicitText && !isDuplicateWithinTtl) {
         if (Get.isSnackbarOpen) Get.closeCurrentSnackbar();
         Get.snackbar(
           msg.title!, msg.body!,
@@ -137,15 +144,17 @@ class PushNotificationService {
         );
       }
 
-      // 👉 Foreground path: for ACTIVE alerts we always pop the Acknowledge dialog (once)
+      // Foreground active alert: show Acknowledge dialog once per alert
       if (isLoggedIn && msg.isActive) {
         final ackKey = _ackKeyFor(msg);
-        if (_ackDialogShown.add(ackKey)) {
-          // start alarm (ring+vibrate)
-          await ensureAlarm().start();
+        if (_ackDialogShown.contains(ackKey)) return;
 
-          // show a SILENT tray only if text present (visual cue)
-          if (msg.hasExplicitText) {
+        _ackDialogShown.add(ackKey);
+        try {
+          await ensureAlarm().start(); // ring + vibrate
+
+          // Silent tray (visual cue) only if we have text and not duplicate
+          if (msg.hasExplicitText && !isDuplicateWithinTtl) {
             await _showLocalNotification(
               title: msg.title ?? '',
               body: msg.body ?? '',
@@ -156,18 +165,21 @@ class PushNotificationService {
             );
           }
 
-          // small delay so overlay context is ready
-          await Future.delayed(const Duration(milliseconds: 150));
+          // Give overlay a moment to mount
+          await Future.delayed(const Duration(milliseconds: 120));
 
           await ui.showSilenceAlarmDialog(
             title: msg.title ?? AppMessages.dialogTitleFallback,
             body:  msg.body  ?? AppMessages.dialogContentFallback,
             alertId: msg.alertId > 0 ? msg.alertId : null,
           );
+        } catch (_) {
+          // If dialog failed to show, allow a retry on next event
+          _ackDialogShown.remove(ackKey);
         }
       } else {
-        // Logged out or resolved: show LOUD tray if there is text
-        if (msg.hasExplicitText) {
+        // Not logged in or already resolved → loud tray only if text and not duplicate
+        if (msg.hasExplicitText && !isDuplicateWithinTtl) {
           await _showLocalNotification(
             title: msg.title ?? '',
             body: msg.body ?? '',
@@ -192,7 +204,6 @@ class PushNotificationService {
     }
   }
 
-  // -------- public helpers
   static Future<bool> ensureRegisteredNow() async {
     final t = await _fcm.getToken();
     if (t == null || t.isEmpty) return false;
@@ -207,7 +218,44 @@ class PushNotificationService {
 
   static Future<void> stopAlarmExternally() => ensureAlarm().stop();
 
-  // -------- internals
+  /// Call this on **Logout**:
+  /// - DELETE device on backend (if we know id, or we try lookup by token if supported)
+  /// - delete local FCM token (so next login re-registers cleanly)
+  /// - stop alarm + clear in-memory state + remove stored ids/tokens
+  static Future<void> unregisterAndDeleteTokenOnLogout() async {
+    try {
+      int? id = _readFcmDeviceId();
+
+      if (id == null) {
+        final token = await _fcm.getToken();
+        if (token != null && token.isNotEmpty) {
+          id = await _lookupDeviceIdByToken(token);
+        }
+      }
+
+      if (id != null) {
+        await _deleteDeviceById(id);
+      }
+
+      // nuke local FCM token so next login re-registers cleanly
+      try { await _fcm.deleteToken(); } catch (_) {}
+
+      // clear in-app state
+      _ackDialogShown.clear();
+      _recentKeys.clear();
+      await ensureAlarm().stop();
+
+      // clear stored ids/tokens
+      _storeFcmDeviceId(null);
+      _storeToken(null);
+    } catch (e) {
+      debugPrint('⚠️ unregisterAndDeleteTokenOnLogout error: $e');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // INTERNALS
+  // ─────────────────────────────────────────────────────────────────────────────
   static Map<String, String> _authHeaders() {
     final box = GetStorage();
     final token = box.read<String>('access');
@@ -229,11 +277,29 @@ class PushNotificationService {
 
     try {
       final res = await _http.post(uri, headers: _authHeaders(), body: body);
-      if (res.statusCode == 200 || res.statusCode == 201) return true;
 
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        try {
+          final map = jsonDecode(res.body) as Map<String, dynamic>;
+          final id  = map['id'];
+          if (id is int) _storeFcmDeviceId(id);
+        } catch (_) {}
+        _storeToken(token);
+        return true;
+      }
+
+      // already exists → PUT (capture id if API returns it)
       if (res.statusCode == 400 || res.statusCode == 409) {
         final put = await _http.put(uri, headers: _authHeaders(), body: body);
-        return put.statusCode >= 200 && put.statusCode < 300;
+        if (put.statusCode >= 200 && put.statusCode < 300) {
+          try {
+            final map = jsonDecode(put.body) as Map<String, dynamic>;
+            final id  = map['id'];
+            if (id is int) _storeFcmDeviceId(id);
+          } catch (_) {}
+          _storeToken(token);
+          return true;
+        }
       }
     } catch (e) {
       debugPrint('⚠️ registerDeviceToken error: $e');
@@ -241,7 +307,6 @@ class PushNotificationService {
     return false;
   }
 
-  /// Use requested channel (silent/loud). Channel controls sound on Android 8+.
   static Future<void> _showLocalNotification({
     required String title,
     required String body,
@@ -294,30 +359,27 @@ class PushNotificationService {
     final msg = FirebaseMessage.fromMap(data);
 
     if (_isLoggedIn()) {
-      // Navigate where you want:
       if (msg.data['device_id'] != null) {
         Get.toNamed(
           '/device_alerts',
           arguments: {'device_id': msg.data['device_id'].toString()},
         );
       } else {
-        // Fallback route (adjust to your actual alerts page route)
-        Get.toNamed('/alerts');
+        Get.toNamed('/alerts'); // fallback to your alerts list route
       }
 
-      if (armAfterRoute) {
-        await Future.delayed(const Duration(milliseconds: 150));
-
-        if (msg.isActive) {
-          final ackKey = _ackKeyFor(msg);
-          if (_ackDialogShown.add(ackKey)) {
-            // Start alarm + show Acknowledge dialog once
+      if (armAfterRoute && msg.isActive) {
+        final ackKey = _ackKeyFor(msg);
+        if (_ackDialogShown.add(ackKey)) {
+          try {
             await ensureAlarm().start();
             await ui.showSilenceAlarmDialog(
               title: msg.title ?? AppMessages.dialogTitleFallback,
               body:  msg.body  ?? AppMessages.dialogContentFallback,
               alertId: msg.alertId > 0 ? msg.alertId : null,
             );
+          } catch (_) {
+            _ackDialogShown.remove(ackKey);
           }
         }
       }
@@ -325,9 +387,74 @@ class PushNotificationService {
       Get.offAllNamed('/login');
     }
   }
+
+  // ── storage helpers ─────────────────────────────────────────────────────────
+  static void _storeFcmDeviceId(int? id) {
+    final box = GetStorage();
+    if (id == null) {
+      box.remove(_kStoredFcmDeviceIdKey);
+    } else {
+      box.write(_kStoredFcmDeviceIdKey, id);
+    }
+  }
+
+  static int? _readFcmDeviceId() {
+    final box = GetStorage();
+    final v = box.read(_kStoredFcmDeviceIdKey);
+    return (v is int) ? v : null;
+  }
+
+  static void _storeToken(String? token) {
+    final box = GetStorage();
+    if (token == null) {
+      box.remove(_kStoredFcmTokenKey);
+    } else {
+      box.write(_kStoredFcmTokenKey, token);
+    }
+  }
+
+  static String? _readStoredToken() {
+    final box = GetStorage();
+    return box.read<String>(_kStoredFcmTokenKey);
+  }
+
+  // ── backend helpers ─────────────────────────────────────────────────────────
+  static Future<bool> _deleteDeviceById(int id) async {
+    try {
+      final uri = Uri.parse('${Api.baseUrl}/api/fcm/devices/$id/');
+      final res = await _http.delete(uri, headers: _authHeaders());
+      return res.statusCode == 204 || res.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ deleteDeviceById error: $e');
+      return false;
+    }
+  }
+
+  /// Only if your API supports query by token. If not, this will just return null.
+  static Future<int?> _lookupDeviceIdByToken(String token) async {
+    try {
+      final uri = Uri.parse('${Api.baseUrl}/api/fcm/devices/')
+          .replace(queryParameters: {'registration_token': token});
+      final res = await _http.get(uri, headers: _authHeaders());
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        if (body is Map<String, dynamic>) {
+          if (body['id'] is int) return body['id'] as int;
+          final results = body['results'];
+          if (results is List && results.isNotEmpty) {
+            final first = results.first;
+            if (first is Map && first['id'] is int) return first['id'] as int;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ lookupDeviceIdByToken error: $e');
+    }
+    return null;
+  }
 }
 
-// ================== BACKGROUND HANDLER (same file) ==================
+// ================== BACKGROUND HANDLER (top-level) ==================
 
 final FlutterLocalNotificationsPlugin _bgLocal = FlutterLocalNotificationsPlugin();
 
@@ -348,7 +475,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   const init = InitializationSettings(android: androidInit, iOS: iosInit);
   await _bgLocal.initialize(init);
 
-  // Loud (must match foreground + Manifest)
+  // Loud channel
   final androidDetails = AndroidNotificationDetails(
     AppMessages.loudChannelId,
     AppMessages.loudChannelName,

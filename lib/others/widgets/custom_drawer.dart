@@ -1,3 +1,5 @@
+import 'package:fire_alarm/modules/Firebase/push_notification_service.dart';
+
 import '/modules/users/user_controller.dart';
 import '/modules/users/user_model.dart';
 import '/others/theme/app_theme.dart';
@@ -47,7 +49,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
           String role = '';
 
           final user = snapshot.data;
-          if (snapshot.connectionState == ConnectionState.done && user != null) {
+          if (snapshot.connectionState == ConnectionState.done &&
+              user != null) {
             email = user.email;
             phone = user.phoneNumber;
             name = email.contains('@') ? email.split('@').first : 'User';
@@ -99,12 +102,18 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   children: [
                     if (email.isNotEmpty)
                       ListTile(
-                        leading: const Icon(Icons.email, color: Colors.deepOrange),
+                        leading: const Icon(
+                          Icons.email,
+                          color: Colors.deepOrange,
+                        ),
                         title: Text(email),
                       ),
                     if (role.isNotEmpty)
                       ListTile(
-                        leading: const Icon(Icons.verified_user, color: Colors.deepOrange),
+                        leading: const Icon(
+                          Icons.verified_user,
+                          color: Colors.deepOrange,
+                        ),
                         title: Text('Role: $role'),
                       ),
                     const SizedBox(height: 16),
@@ -124,38 +133,42 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 leading: const Icon(Icons.logout, color: Colors.redAccent),
                 title: const Text("Logout"),
                 onTap: () async {
-                  // ✅ Confirmation dialog before logout
                   final confirm = await showDialog<bool>(
                     context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text(
-                        "Logout",
-                        style: TextStyle(color: Colors.redAccent),
-                        textAlign: TextAlign.center,
-                      ),
-                      content: const Text(
-                        "Are you sure you want to logout?",
-                        style: TextStyle(
-                          color: Colors.deepOrange,
-                          fontWeight: FontWeight.w600,
+                    builder:
+                        (ctx) => AlertDialog(
+                          title: const Text(
+                            "Logout",
+                            style: TextStyle(color: Colors.redAccent),
+                            textAlign: TextAlign.center,
+                          ),
+                          content: const Text(
+                            "Are you sure you want to logout?",
+                            style: TextStyle(
+                              color: Colors.deepOrange,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          actionsAlignment: MainAxisAlignment.center,
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text("Cancel"),
+                            ),
+                            const SizedBox(width: 16),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text("Logout"),
+                            ),
+                          ],
                         ),
-                      ),
-                      actionsAlignment: MainAxisAlignment.center,
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text("Cancel"),
-                        ),
-                        const SizedBox(width: 16),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text("Logout"),
-                        ),
-                      ],
-                    ),
                   );
 
                   if (confirm == true && context.mounted) {
+                    // 🔥 Unregister device on backend + delete local FCM token + stop alarm
+                    await PushNotificationService.unregisterAndDeleteTokenOnLogout();
+
+                    // your existing app logout flow
                     await _userController.logout(context);
                   }
                 },

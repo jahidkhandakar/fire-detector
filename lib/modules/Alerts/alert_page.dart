@@ -1,3 +1,5 @@
+import 'package:fire_alarm/others/theme/app_theme.dart';
+import 'package:fire_alarm/others/widgets/time_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'alert_controller.dart';
@@ -34,7 +36,7 @@ class _AlertPageState extends State<AlertPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Fire Alerts'),
-        backgroundColor: Colors.deepOrange,
+        backgroundColor: AppTheme().secondaryColor,
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
@@ -56,8 +58,7 @@ class _AlertPageState extends State<AlertPage> {
             itemBuilder: (context, index) {
               final AlertModel alert = controller.alerts[index];
               return Card(
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 elevation: 2,
                 child: ListTile(
                   leading: const Icon(
@@ -68,9 +69,21 @@ class _AlertPageState extends State<AlertPage> {
                     '${alert.alertType.toUpperCase()}  :  ${alert.status.toUpperCase()}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text(
-                    'Device: ${alert.deviceHardwareIdentifier}\n'
-                    'Triggered: ${alert.triggeredAt}',
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Device: ${alert.deviceHardwareIdentifier}'),
+                      const SizedBox(height: 4),
+                      TimeField(
+                        label: 'Triggered',
+                        // if triggeredAt is DateTime?
+                        raw: alert.triggeredAt.toIso8601String(),
+                        // if it's already a String from API, use: raw: alert.triggeredAt,
+                        icon: Icons.schedule,
+                        localeTag: 'en_US', // or 'bn_BD'
+                        fallback: '—',
+                      ),
+                    ],
                   ),
                   trailing: const Icon(Icons.info_outline, size: 20),
                   onTap: () => _showAlertDetailsDialog(context, alert),
@@ -89,8 +102,9 @@ class _AlertPageState extends State<AlertPage> {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           elevation: 8,
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -98,8 +112,11 @@ class _AlertPageState extends State<AlertPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Center(
-                  child: Icon(Icons.warning_amber_rounded,
-                      color: Colors.deepOrange, size: 50),
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.deepOrange,
+                    size: 50,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Center(
@@ -116,21 +133,33 @@ class _AlertPageState extends State<AlertPage> {
                 _buildDetailRow('ID', alert.id.toString()),
                 _buildDetailRow('Device ID', alert.device.toString()),
                 _buildDetailRow(
-                    'Hardware Identifier', alert.deviceHardwareIdentifier),
+                  'Hardware Identifier',
+                  alert.deviceHardwareIdentifier,
+                ),
                 _buildDetailRow('Alert Type', alert.alertType),
                 _buildDetailRow('Status', alert.status),
-                _buildDetailRow(
-                    'Triggered At', alert.triggeredAt.toString()),
-                _buildDetailRow(
-                    'Resolved At',
-                    alert.resolvedAt != null
-                        ? alert.resolvedAt.toString()
-                        : 'Pending'),
+                //_____________Tiggered At and Resolved At using TimeField_____________
+                TimeField(
+                  label: 'Triggered At',
+                  raw: alert.triggeredAt.toIso8601String(),
+                  icon: Icons.schedule,
+                  localeTag: 'en_US',
+                  fallback: '—',
+                ),
+                TimeField(
+                  label: 'Resolved At',
+                  raw: alert.resolvedAt!.toIso8601String(),              
+                  icon: Icons.check_circle_outline,
+                  localeTag: 'en_US',
+                  fallback: 'Pending',
+                ),
+                //_________________________________________________________
                 _buildDetailRow('Owner ID', alert.ownerId.toString()),
                 _buildDetailRow('Owner Email', alert.ownerEmail),
                 _buildDetailRow(
-                    'Owner Phone',
-                    alert.ownerPhone.isEmpty ? 'N/A' : alert.ownerPhone),
+                  'Owner Phone',
+                  alert.ownerPhone.isEmpty ? 'N/A' : alert.ownerPhone,
+                ),
                 const SizedBox(height: 25),
                 Align(
                   alignment: Alignment.center,
@@ -142,9 +171,12 @@ class _AlertPageState extends State<AlertPage> {
                       backgroundColor: Colors.deepOrange,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),

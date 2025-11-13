@@ -1,4 +1,5 @@
-import 'package:fire_alarm/modules/Firebase/push_notification_service.dart';
+//import 'package:fire_alarm/modules/Firebase/push_notification_service.dart';
+import 'package:fire_alarm/others/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -17,28 +18,28 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButtonLocation:
           FloatingActionButtonLocation.centerFloat, // center FAB
       //*---------FAB to verify FCM registration status-----------
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final ok = await PushNotificationService.ensureRegisteredNow();
-          if (ok) {
-            Get.snackbar(
-              'FCM',
-              'Device is registered ✅',
-              snackPosition: SnackPosition.BOTTOM,
-            );
-          } else {
-            Get.snackbar(
-              'FCM',
-              'FCM not registered ❌',
-              snackPosition: SnackPosition.BOTTOM,
-            );
-          }
-        },
-        icon: const Icon(Icons.verified_user),
-        label: const Text('Verify FCM Registration'),
-        backgroundColor: Colors.deepOrange,
-        foregroundColor: Colors.white,
-      ),
+      // floatingActionButton: FloatingActionButton.extended(
+      //   onPressed: () async {
+      //     final ok = await PushNotificationService.ensureRegisteredNow();
+      //     if (ok) {
+      //       Get.snackbar(
+      //         'FCM',
+      //         'Device is registered ✅',
+      //         snackPosition: SnackPosition.BOTTOM,
+      //       );
+      //     } else {
+      //       Get.snackbar(
+      //         'FCM',
+      //         'FCM not registered ❌',
+      //         snackPosition: SnackPosition.BOTTOM,
+      //       );
+      //     }
+      //   },
+      //   icon: const Icon(Icons.verified_user),
+      //   label: const Text('Verify FCM Registration'),
+      //   backgroundColor: Colors.deepOrange,
+      //   foregroundColor: Colors.white,
+      // ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -68,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: const Icon(Icons.notifications_active),
                       label: const Text('All Alerts'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepOrange,
+                        backgroundColor: AppTheme().secondaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 32,
@@ -86,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: const Icon(Icons.notifications_active),
                       label: const Text('Device Alerts'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepOrange,
+                        backgroundColor: AppTheme().secondaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 32,
@@ -108,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: const Icon(Icons.shopping_basket),
                   label: const Text('My Orders'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepOrange,
+                    backgroundColor: AppTheme().secondaryColor,
                     foregroundColor: const Color.fromARGB(255, 4, 2, 2),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 32,

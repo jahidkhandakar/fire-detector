@@ -1,3 +1,5 @@
+import 'package:fire_alarm/others/theme/app_theme.dart';
+import 'package:fire_alarm/others/widgets/time_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '/modules/users/user_controller.dart';
@@ -43,7 +45,7 @@ class _OrderPageState extends State<OrderPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Orders'),
-        backgroundColor: Colors.deepOrange,
+        backgroundColor: AppTheme().secondaryColor,
       ),
       body: Obx(() {
         if (_controller.isLoading.value) {
@@ -85,10 +87,21 @@ class _OrderPageState extends State<OrderPage> {
                     'Order #${order.reference}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text(
-                    '৳${order.amount} • ${order.orderStatus.toUpperCase()}\n'
-                    '${order.orderedAt.toLocal()}',
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Price: ৳${order.amount} • ${order.orderStatus.toUpperCase()}\n'),
+                      const SizedBox(height: 1),
+                      TimeField(
+                        label: 'Ordered At',            
+                        raw: order.orderedAt.toIso8601String(),
+                        icon: Icons.schedule,
+                        localeTag: 'en_US', // or 'bn_BD'
+                        fallback: '—',
+                      ),
+                    ],
                   ),
+
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => _showOrderDetailsDialog(context, order),
                 ),
@@ -180,7 +193,15 @@ class _OrderPageState extends State<OrderPage> {
               _row('Slave Devices', order.numberOfSlaveDevices.toString()),
               _row('Amount', '${order.amount} ${order.currency}'),
               _row('Status', order.orderStatus),
-              _row('Ordered At', order.orderedAt.toLocal().toString()),
+              //___________________Ordered At using TimeField___________________
+              TimeField(
+                    label: 'Ordered At',
+                    raw: order.orderedAt.toIso8601String(),
+                    icon: Icons.schedule,
+                    localeTag: 'en_US',
+                    fallback: '—',
+                ),
+              //________________________________________________________________
               const Divider(height: 25, thickness: 1.2),
               _row('Customer', order.customerName),
               _row('Phone', order.customerPhone),

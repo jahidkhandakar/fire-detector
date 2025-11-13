@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  final primaryColor = const Color.fromRGBO(250, 221, 1, 1);
-  final secondaryColor = Colors.orangeAccent;
+  final primaryColor = Colors.deepOrange;
+  final secondaryColor = Color.fromARGB(255, 248, 113, 29);
   //_________________________Theme Data_________________________//
   static ThemeData get theme {
     return ThemeData(
@@ -14,7 +14,7 @@ class AppTheme {
 
       //_______________________AppBar Theme_______________________//
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.deepOrange,
+        backgroundColor: Color.fromARGB(255, 248, 113, 29),
         foregroundColor: Colors.white,
         elevation: 2,
         centerTitle: true,
@@ -27,7 +27,7 @@ class AppTheme {
       //_______________________Button Theme_______________________//
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.deepOrange,
+          backgroundColor: Color.fromARGB(255, 248, 113, 29),
           foregroundColor: Colors.white,
         ),
       ),
@@ -35,7 +35,7 @@ class AppTheme {
       //_______________________Text Theme_______________________//
       textTheme: const TextTheme(
         titleLarge: TextStyle(
-          color: Colors.deepOrange,
+          color: Color.fromARGB(255, 248, 113, 29),
           fontWeight: FontWeight.bold,
         ),
         bodyMedium: TextStyle(color: Colors.white),

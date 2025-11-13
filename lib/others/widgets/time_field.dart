@@ -3,9 +3,10 @@ import 'package:intl/intl.dart';
 
 class TimeField extends StatelessWidget {
   final String label;
-  final String? raw;     // can be null or empty
+  final String? raw; // can be null or empty
   final IconData icon;
   final String? fallback; // optional custom fallback text
+  final String? localeTag; // e.g. 'en_US', 'bn_BD'; null = device locale
 
   const TimeField({
     super.key,
@@ -13,33 +14,51 @@ class TimeField extends StatelessWidget {
     required this.raw,
     required this.icon,
     this.fallback,
+    this.localeTag,
   });
 
   @override
   Widget build(BuildContext context) {
     final dt = _parseBackendTime(raw);
-    final text = dt != null
-        ? DateFormat('MMM d, yyyy, h:mm a').format(dt) // local time
-        : (fallback ?? '—');
+    final loc =
+        localeTag ??
+        Localizations.localeOf(context).toLanguageTag().replaceAll('-', '_');
+    final text =
+        dt != null
+            ? DateFormat('d MMMM yyyy, h:mm a', loc).format(dt)
+            : (fallback ?? '—');
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 18, color: Colors.black54),
           const SizedBox(width: 8),
+
+          // ⬇️ Stack label above the formatted time to avoid vertical wrapping
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  text, // e.g., "12 November 2025, 8:00 PM"
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.black54),
+                ),
+              ],
             ),
-          ),
-          Text(
-            text,
-            style: const TextStyle(color: Colors.black54),
           ),
         ],
       ),
@@ -61,17 +80,16 @@ class TimeField extends StatelessWidget {
       r'\1:\2',
     );
 
-    // Try fast path with DateTime.parse
+    // Fast path: ISO/RFC3339
     try {
       final dt = DateTime.parse(normalized);
       return dt.toLocal();
     } catch (_) {}
 
-    // Fallback using intl parser that understands RFC822 Z format
+    // Fallback: RFC822-style "Z" (use normalized here too)
     try {
       final fmt = DateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
-      // parseUtc returns a UTC moment; convert to local display
-      final dt = fmt.parseUtc(s0);
+      final dt = fmt.parseUtc(normalized);
       return dt.toLocal();
     } catch (_) {}
 

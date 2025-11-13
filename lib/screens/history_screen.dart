@@ -1,3 +1,4 @@
+import 'package:fire_alarm/others/widgets/time_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '/modules/orders/order_controller.dart';
@@ -22,13 +23,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     // Reuse if already created; otherwise put
-    _orderCtrl = Get.isRegistered<OrderController>()
-        ? Get.find<OrderController>()
-        : Get.put(OrderController(), permanent: true);
+    _orderCtrl =
+        Get.isRegistered<OrderController>()
+            ? Get.find<OrderController>()
+            : Get.put(OrderController(), permanent: true);
 
-    _userCtrl = Get.isRegistered<UserController>()
-        ? Get.find<UserController>()
-        : Get.put(UserController(), permanent: true);
+    _userCtrl =
+        Get.isRegistered<UserController>()
+            ? Get.find<UserController>()
+            : Get.put(UserController(), permanent: true);
 
     // Load AFTER first frame to avoid Obx mutation during build
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -51,16 +54,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
         }
 
         final List<OrderModel> source = _orderCtrl.orders;
-        final List<OrderModel> items = _filterIndex == 1
-            ? source.where((o) => o.orderStatus == 'paid').toList()
-            : source;
+        final List<OrderModel> items =
+            _filterIndex == 1
+                ? source.where((o) => o.orderStatus == 'paid').toList()
+                : source;
 
         if (items.isEmpty) {
           return _emptyState(
             title: _filterIndex == 1 ? 'No paid history yet' : 'No orders yet',
-            subtitle: _filterIndex == 1
-                ? 'Your successful payments will appear here.'
-                : 'Create an order to see it here.',
+            subtitle:
+                _filterIndex == 1
+                    ? 'Your successful payments will appear here.'
+                    : 'Create an order to see it here.',
           );
         }
 
@@ -101,14 +106,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   //*___________________ Empty State Widget ____________________*//
-  Widget _emptyState({required String title, required String subtitle}) => Center(
+  Widget _emptyState({required String title, required String subtitle}) =>
+      Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                _filterIndex == 1 ? Icons.receipt_long : Icons.shopping_bag_outlined,
+                _filterIndex == 1
+                    ? Icons.receipt_long
+                    : Icons.shopping_bag_outlined,
                 color: Colors.deepOrange,
                 size: 56,
               ),
@@ -116,7 +124,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 16, 
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: Colors.black,
                 ),
@@ -135,15 +143,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
 class _HistoryTile extends StatelessWidget {
   final OrderModel order;
-  const _HistoryTile({required this.order});
+
+  const _HistoryTile({super.key, required this.order});
 
   @override
   Widget build(BuildContext context) {
-    final isPaid = order.orderStatus == 'paid';
+    final isPaid = order.orderStatus?.toLowerCase() == 'paid';
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         leading: Icon(
           isPaid ? Icons.check_circle : Icons.pending_actions,
           color: isPaid ? Colors.green : Colors.orange,
@@ -151,14 +162,31 @@ class _HistoryTile extends StatelessWidget {
         ),
         title: Text(
           'Order #${order.reference}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
             color: isPaid ? Colors.green : Colors.orange,
           ),
         ),
-        subtitle: Text(
-          '৳${order.amount} ${order.currency} • ${order.orderStatus.toUpperCase()}\n${order.orderedAt.toLocal()}',
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '৳${order.amount} ${order.currency} • ${order.orderStatus.toUpperCase()}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            TimeField(
+              label: 'Ordered',
+              raw: order.orderedAt.toIso8601String(), // or API string
+              icon: Icons.schedule,
+              localeTag: 'en_US',
+              fallback: '—',
+            ),
+          ],
         ),
         trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
         onTap: () {},

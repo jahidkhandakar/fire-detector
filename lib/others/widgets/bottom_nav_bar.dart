@@ -1,3 +1,4 @@
+import 'package:fire_alarm/others/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class BottomNavBar extends StatelessWidget {
@@ -15,7 +16,7 @@ class BottomNavBar extends StatelessWidget {
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: onTap,
-      selectedItemColor: Colors.redAccent,
+      selectedItemColor: AppTheme().secondaryColor,
       unselectedItemColor: Colors.grey,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),

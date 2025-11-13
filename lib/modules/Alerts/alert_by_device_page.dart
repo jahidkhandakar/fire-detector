@@ -1,3 +1,5 @@
+import 'package:fire_alarm/others/theme/app_theme.dart';
+import 'package:fire_alarm/others/widgets/time_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'alert_controller.dart';
@@ -24,7 +26,7 @@ class AlertByDevicePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Device Alerts'),
-        backgroundColor: Colors.deepOrange,
+        backgroundColor: AppTheme().secondaryColor,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -56,20 +58,23 @@ class AlertByDevicePage extends StatelessWidget {
               }
 
               return DropdownButtonFormField<int>(
-                value: selectedDeviceId.value == 0 ? null : selectedDeviceId.value,
+                value:
+                    selectedDeviceId.value == 0 ? null : selectedDeviceId.value,
                 hint: const Text('Select a Device'),
-                items: deviceCtrl.devices.map((d) {
-                  final int id = d.id;
-                  final String label = (d.deviceName?.isNotEmpty == true)
-                      ? d.deviceName!
-                      : (d.hardwareIdentifier?.isNotEmpty == true)
-                          ? d.hardwareIdentifier!
-                          : 'Device #$id';
-                  return DropdownMenuItem<int>(
-                    value: id,
-                    child: Text(label),
-                  );
-                }).toList(),
+                items:
+                    deviceCtrl.devices.map((d) {
+                      final int id = d.id;
+                      final String label =
+                          (d.deviceName.isNotEmpty == true)
+                              ? d.deviceName
+                              : (d.hardwareIdentifier.isNotEmpty == true)
+                              ? d.hardwareIdentifier
+                              : 'Device #$id';
+                      return DropdownMenuItem<int>(
+                        value: id,
+                        child: Text(label),
+                      );
+                    }).toList(),
                 onChanged: (value) {
                   if (value == null) return;
                   selectedDeviceId.value = value;
@@ -89,7 +94,9 @@ class AlertByDevicePage extends StatelessWidget {
                   return Center(child: Text(alertCtrl.error.value));
                 }
                 if (alertCtrl.alerts.isEmpty) {
-                  return const Center(child: Text('No alerts for this device.'));
+                  return const Center(
+                    child: Text('No alerts for this device.'),
+                  );
                 }
 
                 return ListView.builder(
@@ -120,18 +127,39 @@ class AlertByDevicePage extends StatelessWidget {
                           alert.status.toLowerCase() == 'resolved'
                               ? Icons.check_circle
                               : Icons.warning_amber_rounded,
-                          color: alert.status.toLowerCase() == 'resolved'
-                              ? Colors.green
-                              : Colors.red,
+                          color:
+                              alert.status.toLowerCase() == 'resolved'
+                                  ? Colors.green
+                                  : Colors.red,
                         ),
                         title: Text(
                           '${alert.alertType.toUpperCase()} - ${alert.status.toUpperCase()}',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: Text(
-                          'Device: ${alert.deviceHardwareIdentifier}\n'
-                          'Triggered: ${alert.triggeredAt}\n'
-                          'Resolved: ${alert.resolvedAt ?? 'Pending'}',
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Device: ${alert.deviceHardwareIdentifier}'),
+                            const SizedBox(height: 4),
+                            TimeField(
+                              label: 'Triggered',
+                              // if triggeredAt is DateTime?
+                              raw: alert.triggeredAt.toIso8601String(),
+                              // if it's already a String from API, use: raw: alert.triggeredAt,
+                              icon: Icons.schedule,
+                              localeTag: 'en_US', // or 'bn_BD'
+                              fallback: '—',
+                            ),
+                            TimeField(
+                              label: 'Resolved',
+                              // if triggeredAt is DateTime?
+                              raw: alert.resolvedAt!.toIso8601String(),
+                              // if it's already a String from API, use: raw: alert.triggeredAt,
+                              icon: Icons.schedule,
+                              localeTag: 'en_US', // or 'bn_BD'
+                              fallback: 'Pending',
+                            ),
+                          ],
                         ),
                         onTap: () => _showDetailsDialog(context, alert),
                       ),
@@ -150,73 +178,106 @@ class AlertByDevicePage extends StatelessWidget {
   void _showDetailsDialog(BuildContext context, AlertModel alert) {
     showDialog(
       context: context,
-      builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Center(
-                child: Icon(Icons.info_outline, color: Colors.deepOrangeAccent, size: 44),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  'Alert #${alert.id}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.deepOrangeAccent,
+      builder:
+          (_) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(
+                    child: Icon(
+                      Icons.info_outline,
+                      color: Colors.deepOrangeAccent,
+                      size: 44,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      'Alert #${alert.id}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.deepOrangeAccent,
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  _row('Device ID', alert.device.toString()),
+                  _row('Hardware', alert.deviceHardwareIdentifier),
+                  _row('Type', alert.alertType),
+                  _row('Status', alert.status),
+                  //*___________Tiggered At and Resolved At using TimeField_____________
+                  TimeField(
+                    label: 'Triggered At',
+                    raw: alert.triggeredAt.toIso8601String(),
+                    icon: Icons.schedule,
+                    localeTag: 'en_US',
+                    fallback: '—',
+                  ),
+                  TimeField(
+                    label: 'Resolved At',
+                    raw: alert.resolvedAt!.toIso8601String(),
+                    icon: Icons.check_circle_outline,
+                    localeTag: 'en_US',
+                    fallback: 'Pending',
+                  ),
+                  //*_______________________________________________________________*
+                  _row('Owner ID', alert.ownerId.toString()),
+                  _row('Owner Email', alert.ownerEmail),
+                  _row(
+                    'Owner Phone',
+                    alert.ownerPhone.isEmpty ? 'N/A' : alert.ownerPhone,
+                  ),
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.center,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                      label: const Text(
+                        'Close',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const Divider(height: 24),
-              _row('Device ID', alert.device.toString()),
-              _row('Hardware', alert.deviceHardwareIdentifier),
-              _row('Type', alert.alertType),
-              _row('Status', alert.status),
-              _row('Triggered At', alert.triggeredAt.toString()),
-              _row('Resolved At', alert.resolvedAt?.toString() ?? 'Pending'),
-              _row('Owner ID', alert.ownerId.toString()),
-              _row('Owner Email', alert.ownerEmail),
-              _row('Owner Phone', alert.ownerPhone.isEmpty ? 'N/A' : alert.ownerPhone),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.center,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                  label: const Text('Close', style: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
   }
 
   Widget _row(String keyText, String valueText) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: Text(
-                '$keyText:',
-                style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black54),
-              ),
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 3,
+          child: Text(
+            '$keyText:',
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black54,
             ),
-            Expanded(
-              flex: 5,
-              child: Text(
-                valueText,
-                style: const TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+        Expanded(
+          flex: 5,
+          child: Text(
+            valueText,
+            style: const TextStyle(
+              color: Colors.deepOrange,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
