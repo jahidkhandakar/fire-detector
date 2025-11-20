@@ -34,5 +34,11 @@ class Api {
   //Users
   static const String users = "$baseUrl/users/${"id"}";
 
+  // About
+  static const String about = '$baseUrl/content/about/';
+
+  //FAQ
+  static const String faq = '$baseUrl/content/faq/';
+
 
 }

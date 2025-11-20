@@ -66,7 +66,6 @@ class CustomSnackbar {
       case SnackbarType.warning:
         return Colors.orange.shade700;
       case SnackbarType.info:
-      default:
         return Colors.blue.shade600;
     }
   }
@@ -80,7 +79,6 @@ class CustomSnackbar {
       case SnackbarType.warning:
         return Icons.warning;
       case SnackbarType.info:
-      default:
         return Icons.info;
     }
   }

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'alert_controller.dart';
 import 'alert_model.dart';
-import '../Devices/device_controller.dart';
+import '../devices/device_controller.dart';
 import '/others/widgets/custom_dialog.dart';
 
 class AlertByDevicePage extends StatelessWidget {

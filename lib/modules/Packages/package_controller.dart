@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
-import 'package:fire_alarm/modules/Packages/package_model.dart';
-import 'package:fire_alarm/modules/Packages/package_service.dart';
+import '/modules/packages/package_model.dart';
+import '/modules/packages/package_service.dart';
 
 class PackageController extends GetxController {
   final PackageService _service = PackageService();

@@ -4,7 +4,7 @@ import 'package:get_storage/get_storage.dart';
 import '/modules/auth/auth_controller.dart';
 import '/others/utils/api.dart';
 import '/others/widgets/custom_snackbar.dart';
-import '/modules/Firebase/push_notification_service.dart';
+import '/modules/firebase/push_notification_service.dart';
 
 class AuthHandle {
   final AuthController _authController = AuthController();

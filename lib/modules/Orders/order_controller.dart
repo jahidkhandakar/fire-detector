@@ -9,6 +9,7 @@ class OrderController extends GetxController {
   var isLoading = false.obs;
   var error = ''.obs;
 
+  //_____________________Load Orders_____________________//
   Future<void> loadOrders({required int userId}) async {
     try {
       isLoading.value = true;
@@ -23,7 +24,7 @@ class OrderController extends GetxController {
       isLoading.value = false;
     }
   }
-
+  //__________________Get Order by ID___________________//
   Future<OrderModel?> getOrderById({required int userId, required int orderId}) async {
     try {
       debugPrint('🔄 Fetch order by id=$orderId for userId=$userId');
@@ -35,7 +36,7 @@ class OrderController extends GetxController {
       return null;
     }
   }
-
+  //__________________Create Order__________________//
   Future<OrderModel?> createOrder({required int userId, required Map<String, dynamic> body}) async {
     try {
       error.value = '';
@@ -48,6 +49,27 @@ class OrderController extends GetxController {
       debugPrint('❌ createOrder error: $e\n$st');
       error.value = e.toString();
       return null;
+    }
+  }
+  //_____________________Mark Order Paid_____________________//
+  Future<void> markOrderPaid({
+    required int userId,
+    required int orderId,
+  }) async {
+    try {
+      error.value = '';
+      // Call backend to set order_status = "paid"
+      await _service.updateOrderStatus(
+        userId: userId,
+        orderId: orderId,
+        status: 'paid',
+      );
+
+      // simplest + clean: reload list so UI updates
+      await loadOrders(userId: userId);
+    } catch (e, st) {
+      debugPrint('❌ markOrderPaid error: $e\n$st');
+      error.value = e.toString();
     }
   }
 }

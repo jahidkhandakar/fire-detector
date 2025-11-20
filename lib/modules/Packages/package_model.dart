@@ -15,6 +15,12 @@ class PackageModel {
     required this.mrf,
   });
 
+  // ✅ Computed flag for standalone packages
+  bool get isStandalone {
+    final n = name.toLowerCase();
+    return n.contains('standalone') || n.contains('stand-alone');
+  }
+
   factory PackageModel.fromJson(Map<String, dynamic> json) {
     double _toDouble(dynamic v) {
       if (v == null) return 0.0;

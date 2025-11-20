@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:fire_alarm/modules/about/about_page.dart';
+import 'package:fire_alarm/modules/faq/faq_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -10,13 +12,13 @@ import '/screens/login_screen.dart';
 import '/screens/signup_screen.dart';
 import '/index_page.dart';
 import '/screens/home_screen.dart';
-import '/modules/Users/user_page.dart';
-import '/modules/Packages/package_page.dart';
-import '/modules/Devices/device_page.dart';
-import '/modules/Alerts/alert_page.dart';
-import '/modules/Alerts/alert_by_device_page.dart';
-import '/modules/Orders/order_page.dart';
-import '/modules/ShurjoPay/shurjopay_checkout_page.dart';
+import '/modules/users/user_page.dart';
+import '/modules/packages/package_page.dart';
+import '/modules/devices/device_page.dart';
+import '/modules/alerts/alert_page.dart';
+import '/modules/alerts/alert_by_device_page.dart';
+import '/modules/orders/order_page.dart';
+import '/modules/shurjopay/shurjopay_checkout_page.dart';
 import '/others/theme/app_theme.dart';
 
 Future<void> _bootstrap() async {
@@ -57,17 +59,19 @@ class FireAlarm extends StatelessWidget {
 
       // Keep your named routes for navigation elsewhere
       getPages: [
-        GetPage(name: '/login', page: () => const LoginScreen()),
-        GetPage(name: '/signup', page: () => const SignupScreen()),
-        GetPage(name: '/index', page: () => const IndexPage()),
-        GetPage(name: '/home', page: () => const HomeScreen()),
-        GetPage(name: '/user', page: () => const UserPage()),
-        GetPage(name: '/packages', page: () => const PackagePage()),
-        GetPage(name: '/devices', page: () => const DevicePage()),
-        GetPage(name: '/alerts', page: () => const AlertPage()),
-        GetPage(name: '/device_alerts', page: () => const AlertByDevicePage()),
-        GetPage(name: '/orders', page: () => const OrderPage()),
-        GetPage(name: '/checkout', page: () => const ShurjoPayCheckoutPage()),
+        GetPage(name: '/login', page: () => LoginScreen()),
+        GetPage(name: '/signup', page: () => SignupScreen()),
+        GetPage(name: '/index', page: () => IndexPage()),
+        GetPage(name: '/home', page: () => HomeScreen()),
+        GetPage(name: '/user', page: () => UserPage()),
+        GetPage(name: '/packages', page: () => PackagePage()),
+        GetPage(name: '/devices', page: () => DevicePage()),
+        GetPage(name: '/alerts', page: () => AlertPage()),
+        GetPage(name: '/device_alerts', page: () => AlertByDevicePage()),
+        GetPage(name: '/orders', page: () => OrderPage()),
+        GetPage(name: '/checkout', page: () => ShurjoPayCheckoutPage()),
+        GetPage(name: '/about', page: () => AboutPage()),
+        GetPage(name: '/faq', page: () => FaqPage()),
       ],
     );
   }

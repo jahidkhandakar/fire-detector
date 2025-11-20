@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:get_storage/get_storage.dart';
-import 'package:fire_alarm/modules/Packages/package_model.dart';
+import '/modules/packages/package_model.dart';
 
 class PackageService {
   final GetStorage _box = GetStorage();
@@ -14,6 +14,7 @@ class PackageService {
     };
   }
 
+  //*_________________FETCH PACKAGES_________________*/
   Future<List<PackageModel>> fetchPackages({required String apiUrl}) async {
     final uri = Uri.parse(apiUrl);
     final res = await http

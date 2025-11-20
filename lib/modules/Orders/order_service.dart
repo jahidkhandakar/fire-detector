@@ -88,4 +88,30 @@ class OrderService {
       throw Exception('Failed to create order (${res.statusCode}): ${res.body}');
     }
   }
+
+  //______________ 🔥 update order_status__________________//
+  Future<OrderModel> updateOrderStatus({
+    required int userId,
+    required int orderId,
+    required String status,
+  }) async {
+    final uri = Uri.parse(
+      '${Api.ordersUpdateStatus}$userId/$orderId/',
+    );
+
+    final res = await client.post(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({'order_status': status}),
+    );
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return OrderModel.fromJson(data);
+    } else {
+      throw Exception(
+        'Update status failed: ${res.statusCode} ${res.body}',
+      );
+    }
+  }
 }

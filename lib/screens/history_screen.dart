@@ -144,11 +144,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 class _HistoryTile extends StatelessWidget {
   final OrderModel order;
 
-  const _HistoryTile({super.key, required this.order});
+  const _HistoryTile({ required this.order});
 
   @override
   Widget build(BuildContext context) {
-    final isPaid = order.orderStatus?.toLowerCase() == 'paid';
+    final isPaid = order.orderStatus.toLowerCase() == 'paid';
 
     return Card(
       elevation: 2,

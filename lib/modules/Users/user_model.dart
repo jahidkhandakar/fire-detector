@@ -1,4 +1,4 @@
-import 'package:fire_alarm/modules/Devices/device_model.dart';
+import '/modules/devices/device_model.dart';
 
 class UserModel {
   final int id;

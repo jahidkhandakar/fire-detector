@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-
-import '/modules/ShurjoPay/shurjopay_controller.dart';
+import '/modules/shurjopay/shurjopay_controller.dart';
 import '/others/widgets/package_selector.dart';
 import '/others/utils/api.dart';
-import '/modules/Packages/package_controller.dart';
-import '/modules/Packages/package_model.dart';
+import '/modules/packages/package_controller.dart';
+import '/modules/packages/package_model.dart';
 import '/modules/users/user_controller.dart';
 import '/modules/users/user_model.dart';
 import '/modules/orders/order_controller.dart';
@@ -22,7 +21,10 @@ class PackagePage extends StatefulWidget {
 
 class _PackagePageState extends State<PackagePage> {
   final PackageController _pkgCtrl = Get.put(PackageController());
-  final OrderController _orderCtrl = Get.put(OrderController(), permanent: true);
+  final OrderController _orderCtrl = Get.put(
+    OrderController(),
+    permanent: true,
+  );
   final UserController _userCtrl = Get.put(UserController(), permanent: true);
 
   final String apiUrl = Api.packages;
@@ -62,7 +64,10 @@ class _PackagePageState extends State<PackagePage> {
             itemCount: _pkgCtrl.packages.length,
             itemBuilder: (context, index) {
               final pkg = _pkgCtrl.packages[index];
-              return _buildPackageCard(pkg);
+
+              final bool isStandalone = index == 1;
+
+              return _buildPackageCard(pkg, isStandalone: isStandalone);
             },
           ),
         );
@@ -70,9 +75,11 @@ class _PackagePageState extends State<PackagePage> {
     );
   }
 
-  Widget _buildPackageCard(PackageModel pkg) {
+  Widget _buildPackageCard(PackageModel pkg, {required bool isStandalone}) {
     final masters = masterQtyByPackage[pkg.id] ?? pkg.minQuantity;
-    final slaves = slaveQtyByPackage[pkg.id] ?? pkg.minQuantity;
+    // 👇 Stand-Alone → no slaves, always 0
+    final slaves =
+        isStandalone ? 0 : (slaveQtyByPackage[pkg.id] ?? pkg.minQuantity);
 
     final devices = masters + slaves;
     final upfrontDevicesCost = pkg.pricePerDevice * devices;
@@ -151,40 +158,45 @@ class _PackagePageState extends State<PackagePage> {
                       min: pkg.minQuantity,
                       max: pkg.maxQuantity,
                       initial: masters,
-                      onChanged: (v) =>
-                          setState(() => masterQtyByPackage[pkg.id] = v),
+                      onChanged:
+                          (v) => setState(() => masterQtyByPackage[pkg.id] = v),
                     ),
                   ],
                 ),
                 const SizedBox(width: 16),
                 // Slave selector
-                Column(
-                  children: [
-                    Text(
-                      "Slave",
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[800],
-                        fontWeight: FontWeight.w600,
+                if (!isStandalone) ...[
+                  Column(
+                    children: [
+                      Text(
+                        "Slave",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[800],
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    PackageSelector(
-                      min: pkg.minQuantity,
-                      max: pkg.maxQuantity,
-                      initial: slaves,
-                      onChanged: (v) =>
-                          setState(() => slaveQtyByPackage[pkg.id] = v),
-                    ),
-                  ],
-                ),
+                      const SizedBox(height: 2),
+                      PackageSelector(
+                        min: pkg.minQuantity,
+                        max: pkg.maxQuantity,
+                        initial: slaves,
+                        onChanged:
+                            (v) =>
+                                setState(() => slaveQtyByPackage[pkg.id] = v),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
 
             const SizedBox(height: 12),
             Center(
               child: Text(
-                'Selected: $masters Master • $slaves Slave',
+                isStandalone
+                    ? 'Selected: $masters Master device(s)'
+                    : 'Selected: $masters Master • $slaves Slave',
                 style: TextStyle(
                   color: Colors.grey[700],
                   fontWeight: FontWeight.w600,
@@ -226,7 +238,13 @@ class _PackagePageState extends State<PackagePage> {
                 ),
                 const SizedBox(width: 8),
                 FilledButton.icon(
-                  onPressed: () => _handleSelect(pkg, masters, slaves, totalNow),
+                  onPressed:
+                      () => _handleSelect(
+                        pkg,
+                        masters,
+                        isStandalone ? 0 : slaves,
+                        totalNow,
+                      ),
                   icon: const Icon(Icons.shopping_cart_checkout),
                   label: const Text('Select'),
                 ),
@@ -257,15 +275,22 @@ class _PackagePageState extends State<PackagePage> {
 
     // pull user info (safe fallbacks)
     final UserModel? u = _userCtrl.me.value;
-    final String customerName = (u?.fullName?.trim().isNotEmpty ?? false)
-        ? u!.fullName!.trim()
-        : (u?.email.split('@').first ?? 'Customer');
+    final String customerName =
+        (u?.fullName?.trim().isNotEmpty ?? false)
+            ? u!.fullName!.trim()
+            : (u?.email.split('@').first ?? 'Customer');
     final String customerAddress =
-        (u?.address?.trim().isNotEmpty ?? false) ? u!.address!.trim() : 'Dhaka, Bangladesh';
+        (u?.address?.trim().isNotEmpty ?? false)
+            ? u!.address!.trim()
+            : 'Dhaka, Bangladesh';
     final String customerPhone =
-        (u?.phoneNumber.trim().isNotEmpty ?? false) ? u!.phoneNumber.trim() : '01700000000';
+        (u?.phoneNumber.trim().isNotEmpty ?? false)
+            ? u!.phoneNumber.trim()
+            : '01700000000';
     final String customerEmail =
-        (u?.email.trim().isNotEmpty ?? false) ? u!.email.trim() : 'customer@example.com';
+        (u?.email.trim().isNotEmpty ?? false)
+            ? u!.email.trim()
+            : 'customer@example.com';
     const String customerCity = 'Dhaka';
     const String customerPostCode = '1212';
 
@@ -275,7 +300,9 @@ class _PackagePageState extends State<PackagePage> {
     final orderBody = {
       "package_id": pkg.id, // ✅ server expects `package_id`
       "quantity": devices,
-      "amount": totalNow.toStringAsFixed(2), // if server expects number, send `totalNow`
+      "amount": totalNow.toStringAsFixed(
+        2,
+      ), // if server expects number, send `totalNow`
       "currency": "BDT",
       "number_of_master_devices": masters,
       "number_of_slave_devices": slaves,
@@ -302,7 +329,9 @@ class _PackagePageState extends State<PackagePage> {
 
     if (created == null) {
       final errText =
-          _orderCtrl.error.value.isNotEmpty ? _orderCtrl.error.value : 'Failed to create order';
+          _orderCtrl.error.value.isNotEmpty
+              ? _orderCtrl.error.value
+              : 'Failed to create order';
       Get.snackbar('Order', errText, duration: const Duration(seconds: 4));
       return;
     }
@@ -326,7 +355,9 @@ class _PackagePageState extends State<PackagePage> {
     if (init == null || init.checkoutUrl.isEmpty) {
       Get.snackbar(
         'Error',
-        payCtrl.error.value.isNotEmpty ? payCtrl.error.value : 'Failed to start payment',
+        payCtrl.error.value.isNotEmpty
+            ? payCtrl.error.value
+            : 'Failed to start payment',
       );
       _markLocalOrderStatus(_orderCtrl, created, 'not_paid');
       await _orderCtrl.loadOrders(userId: userId);
@@ -334,7 +365,9 @@ class _PackagePageState extends State<PackagePage> {
     }
 
     final orderIdForVerify =
-        init.spOrderId.isNotEmpty ? init.spOrderId : init.transactionId.toString();
+        init.spOrderId.isNotEmpty
+            ? init.spOrderId
+            : init.transactionId.toString();
 
     // 3) Open checkout — expects a Map result {kind: return|cancel|error, orderId?}
     final result = await Get.toNamed(
@@ -354,7 +387,8 @@ class _PackagePageState extends State<PackagePage> {
 
     if (result is Map) {
       final kind = result['kind'];
-      if (result['orderId'] is String && (result['orderId'] as String).isNotEmpty) {
+      if (result['orderId'] is String &&
+          (result['orderId'] as String).isNotEmpty) {
         verifyId = result['orderId'] as String;
       }
 
@@ -373,7 +407,9 @@ class _PackagePageState extends State<PackagePage> {
         print('🚪 User cancelled the checkout.');
       } else if (kind == 'error') {
         paid = false;
-        print('⚠️ Checkout error: ${result['reason']} ${result['detail'] ?? ''}');
+        print(
+          '⚠️ Checkout error: ${result['reason']} ${result['detail'] ?? ''}',
+        );
       }
     } else {
       // Fallback if older route returns bool
@@ -381,10 +417,13 @@ class _PackagePageState extends State<PackagePage> {
     }
 
     if (paid) {
+      //_________________Call Update Order Status API_________________//
+      await _orderCtrl.markOrderPaid(userId: userId, orderId: created.id);
+
       print('🔔 SNACK [Payment]: Payment successful ✅');
       Get.snackbar('Payment', 'Payment successful ✅');
-      _markLocalOrderStatus(_orderCtrl, created, 'paid');
-      await _orderCtrl.loadOrders(userId: userId);
+      //_markLocalOrderStatus(_orderCtrl, created, 'paid');
+      //await _orderCtrl.loadOrders(userId: userId);
       Get.toNamed('/index', arguments: {'tab': 3}); // → History tab
     } else {
       print('🔔 SNACK [Payment]: Payment cancelled/failed');
@@ -404,7 +443,11 @@ class _PackagePageState extends State<PackagePage> {
     }
   }
 
-  void _markLocalOrderStatus(OrderController ctrl, OrderModel created, String status) {
+  void _markLocalOrderStatus(
+    OrderController ctrl,
+    OrderModel created,
+    String status,
+  ) {
     final idx = ctrl.orders.indexWhere((o) => o.id == created.id);
     if (idx == -1) return;
     final curr = ctrl.orders[idx];
@@ -431,6 +474,8 @@ class _PackagePageState extends State<PackagePage> {
       orderedAt: curr.orderedAt,
     );
   }
+
+  //*___________________WIDGETS___________________*/
 
   Widget _rowIconTextValue({
     required IconData icon,
@@ -509,9 +554,18 @@ class _PackagePageState extends State<PackagePage> {
                 ),
                 const SizedBox(height: 8),
                 _kvRow('ID', pkg.id.toString()),
-                _kvRow('Quantity Range', '${pkg.minQuantity} – ${pkg.maxQuantity}'),
-                _kvRow('Price per Device', _currency.format(pkg.pricePerDevice)),
-                _kvRow('MRF (per master)', pkg.mrf == 0 ? '—' : _currency.format(pkg.mrf)),
+                _kvRow(
+                  'Quantity Range',
+                  '${pkg.minQuantity} – ${pkg.maxQuantity}',
+                ),
+                _kvRow(
+                  'Price per Device',
+                  _currency.format(pkg.pricePerDevice),
+                ),
+                _kvRow(
+                  'MRF (per master)',
+                  pkg.mrf == 0 ? '—' : _currency.format(pkg.mrf),
+                ),
                 const SizedBox(height: 16),
               ],
             ),

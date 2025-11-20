@@ -107,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ElevatedButton.icon(
                   onPressed: () => Get.toNamed('/orders'),
                   icon: const Icon(Icons.shopping_basket),
-                  label: const Text('My Orders'),
+                  label: const Text('Previous Orders'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme().secondaryColor,
                     foregroundColor: const Color.fromARGB(255, 4, 2, 2),
@@ -119,10 +119,40 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 50),
+              //*-----Buy New Device/Package Button-------*//
+              // SizedBox(
+              //   width: double.infinity,
+              //   child: ElevatedButton.icon(
+              //     onPressed: () => Get.toNamed('/packages'),
+              //     icon: const Icon(Icons.shopping_cart),
+              //     label: const Text('Buy Package'),
+              //     style: ElevatedButton.styleFrom(
+              //       backgroundColor: AppTheme().secondaryColor,
+              //       foregroundColor: Colors.white,
+              //       padding: const EdgeInsets.symmetric(
+              //         horizontal: 32,
+              //         vertical: 16,
+              //       ),
+              //       textStyle: const TextStyle(fontSize: 18),
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppTheme().secondaryColor,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_shopping_cart),
+        label: const Text('Buy package'),
+        onPressed: () {
+          print("Buy package button pressed");
+          Get.offAllNamed('/index', arguments: {'tab': 2});    
+        } 
+      ),
+      //floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }

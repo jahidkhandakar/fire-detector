@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:geolocator/geolocator.dart'; // <-- NEW
+import 'package:geolocator/geolocator.dart'; 
 import 'device_model.dart';
 import 'device_service.dart';
 

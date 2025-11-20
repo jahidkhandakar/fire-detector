@@ -5,11 +5,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
-
 import '/others/utils/api.dart';
 import '/others/widgets/alarm_service.dart';              // ensureAlarm()
 import '/others/widgets/custom_dialog.dart' as ui;       // showSilenceAlarmDialog / showResolveDialog
-import '/modules/Firebase/message.dart';                 // AppMessages, FirebaseMessage
+import '/modules/firebase/message.dart';                 // AppMessages, FirebaseMessage
 
 class PushNotificationService {
   // ─────────────────────────────────────────────────────────────────────────────

@@ -122,6 +122,12 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       title: const Text("About"),
                       onTap: () => Navigator.pushNamed(context, '/about'),
                     ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      leading: const Icon(Icons.help_outline, color: Colors.deepOrange),
+                      title: const Text("FAQ"),
+                      onTap: () => Navigator.pushNamed(context, '/faq'),
+                    ),
                   ],
                 ),
               ),

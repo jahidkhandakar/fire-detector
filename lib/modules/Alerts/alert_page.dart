@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import 'alert_controller.dart';
 import 'alert_model.dart';
 import 'package:fire_alarm/others/utils/api.dart';
-import '/modules/Firebase/push_notification_service.dart';
+import '/modules/firebase/push_notification_service.dart';
 
 class AlertPage extends StatefulWidget {
   const AlertPage({super.key});
