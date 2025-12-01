@@ -146,30 +146,30 @@ class _AboutPageState extends State<AboutPage> {
                       _divider(),
                       _contactTile(
                         icon: Icons.phone,
-                        label: 'Phone',
+                        label: 'WhatsApp',
                         value: contact.phone,
-                        onTap: _launchIf('tel:${contact.phone}'),
+                        onTap: _launchWhatsApp(contact.phone),
                       ),
                       _divider(),
                       _contactTile(
                         icon: Icons.language,
                         label: 'Website',
                         value: contact.website,
-                        onTap: _launchIf(contact.website),
+                        onTap: _launchWeb(contact.website),
                       ),
                       _divider(),
                       _contactTile(
                         icon: Icons.facebook,
                         label: 'Facebook',
                         value: contact.facebook,
-                        onTap: _launchIf(contact.facebook),
+                        onTap: _launchWeb(contact.facebook),
                       ),
                       _divider(),
                       _contactTile(
                         icon: Icons.business_center,
                         label: 'LinkedIn',
                         value: contact.linkedin,
-                        onTap: _launchIf(contact.linkedin),
+                        onTap: _launchWeb(contact.linkedin),
                       ),
                     ],
                   ),
@@ -282,15 +282,38 @@ class _AboutPageState extends State<AboutPage> {
 
   Widget _divider() => const Divider(height: 22, thickness: .7);
 
-  VoidCallback? _launchIf(String url) {
+  //*_______________________HELPERS________________________//
+
+  VoidCallback? _launchWeb(String url) {
     final trimmed = url.trim();
     if (trimmed.isEmpty) return null;
+
     return () async {
       final uri = Uri.tryParse(
         trimmed.startsWith('http') ? trimmed : 'https://$trimmed',
       );
+
       if (uri != null && await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        debugPrint('Could not launch $uri');
+      }
+    };
+  }
+
+  VoidCallback? _launchWhatsApp(String phone) {
+    // remove spaces, dashes etc.
+    final normalized = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (normalized.isEmpty) return null;
+
+    return () async {
+      // WhatsApp deep-link (also works via browser if app not installed)
+      final uri = Uri.parse('https://wa.me/$normalized');
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        debugPrint('Could not launch WhatsApp for $normalized');
       }
     };
   }

@@ -261,7 +261,7 @@ class _UserProfileView extends StatelessWidget {
     final controller = Get.find<UserController>();
     final nameCtrl = TextEditingController(text: user.fullName ?? '');
     final addressCtrl = TextEditingController(text: user.address ?? '');
-    final phoneCtrl = TextEditingController(text: user.phoneNumber ?? '');
+    final phoneCtrl = TextEditingController(text: user.phoneNumber);
 
     showModalBottomSheet(
       context: context,

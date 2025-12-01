@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
+import 'package:fire_alarm/others/errors/app_error_handler.dart';
 import 'package:http/http.dart' as http;
 import 'package:get_storage/get_storage.dart';
 import '/others/utils/api.dart';
@@ -34,49 +37,79 @@ class DeviceService {
   /// /devices/  -> { count, next, previous, results:[...] } or [ ... ]
   Future<List<DeviceModel>> fetchAllDevices() async {
     final uri = Uri.parse(Api.devices);
-    final res = await _client.get(uri, headers: _headers());
-    if (res.statusCode != 200) {
-      throw Exception('Devices fetch failed: ${res.statusCode}');
+
+    try {
+      final res = await http.get(uri, headers: _headers());
+      print('Devices Response [${res.statusCode}]: ${res.body}');
+
+      final decoded = jsonDecode(res.body);
+
+      if (decoded is Map<String, dynamic>) {
+        final results = (decoded['results'] as List?) ?? const [];
+        return results
+            .map((e) => DeviceModel.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ))
+            .toList();
+      }
+
+      if (decoded is List) {
+        return decoded
+            .map((e) => DeviceModel.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ))
+            .toList();
+      }
+
+      // unexpected shape
+      return [];
+    } on AppException {
+      // already classified, just bubble up
+      rethrow;
+    } catch (e, st) {
+      print('Error in fetchAllDevices service: $e');
+      throw AppException.from(e, st);
     }
-    final decoded = jsonDecode(res.body);
-    if (decoded is Map<String, dynamic>) {
-      final results = (decoded['results'] as List?) ?? const [];
-      return results
-          .map((e) => DeviceModel.fromJson(Map<String, dynamic>.from(e as Map)))
-          .toList();
-    }
-    if (decoded is List) {
-      return decoded
-          .map((e) => DeviceModel.fromJson(Map<String, dynamic>.from(e as Map)))
-          .toList();
-    }
-    return [];
   }
 
   /// /devices/tree/ -> [ { master fields..., "slaves":[...] }, ... ]
   Future<List<DeviceNode>> fetchDeviceTree() async {
     final uri = Uri.parse('${Api.baseUrl}/devices/tree/');
-    final res = await _client.get(uri, headers: _headers());
-    if (res.statusCode != 200) {
-      throw Exception('Device tree fetch failed: ${res.statusCode}');
+
+    try {
+      final res = await AppHttp.get(uri, headers: _headers());
+      print('Device Tree Response [${res.statusCode}]: ${res.body}');
+
+      final decoded = jsonDecode(res.body);
+
+      if (decoded is List) {
+        return decoded
+            .map((e) => DeviceNode.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ))
+            .toList();
+      }
+
+      return [];
+    } on AppException {
+      rethrow;
+    } catch (e, st) {
+      print('Error in fetchDeviceTree service: $e');
+      throw AppException.from(e, st);
     }
-    final decoded = jsonDecode(res.body);
-    if (decoded is List) {
-      return decoded
-          .map((e) => DeviceNode.fromJson(Map<String, dynamic>.from(e as Map)))
-          .toList();
-    }
-    return [];
   }
 
   /// POST /devices/register/  (works for master & slave)
+  ///
+  /// We keep the DeviceRegisterResult pattern (so you can show raw API errors),
+  /// but still wrap real network/timeout failures in AppException.
   Future<DeviceRegisterResult> registerDevice({
     required String hardwareIdentifier,
     required String deviceName,
     required double latitude,
     required double longitude,
     required String deviceRole, // 'master' | 'slave'
-    int? masterId,              // required if deviceRole == 'slave'
+    int? masterId, // required if deviceRole == 'slave'
   }) async {
     final uri = Uri.parse('${Api.baseUrl}/devices/register/');
     final payload = <String, dynamic>{
@@ -88,24 +121,51 @@ class DeviceService {
       if (deviceRole == 'slave' && masterId != null) 'master_id': masterId,
     };
 
-    final res = await _client.post(
-      uri,
-      headers: _headers(),
-      body: jsonEncode(payload),
-    );
-
-    final body = res.body;
-    print('Register Device Response [${res.statusCode}]: $body');
     try {
+      final res = await _client
+          .post(
+            uri,
+            headers: _headers(),
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      final body = res.body;
+      print('Register Device Response [${res.statusCode}]: $body');
+
       if (res.statusCode == 200 || res.statusCode == 201) {
-        final data = jsonDecode(body) as Map<String, dynamic>;
-        final dev = DeviceModel.fromJson(data);
-        return DeviceRegisterResult(statusCode: res.statusCode, device: dev, rawBody: body);
+        try {
+          final data = jsonDecode(body) as Map<String, dynamic>;
+          final dev = DeviceModel.fromJson(data);
+          return DeviceRegisterResult(
+            statusCode: res.statusCode,
+            device: dev,
+            rawBody: body,
+          );
+        } catch (e) {
+          // parsing error but HTTP was OK
+          print('Parsing error in registerDevice: $e');
+          return DeviceRegisterResult(
+            statusCode: res.statusCode,
+            rawBody: body,
+          );
+        }
       } else {
-        return DeviceRegisterResult(statusCode: res.statusCode, rawBody: body);
+        // HTTP error – let caller inspect status & raw body
+        return DeviceRegisterResult(
+          statusCode: res.statusCode,
+          rawBody: body,
+        );
       }
-    } catch (_) {
-      return DeviceRegisterResult(statusCode: res.statusCode, rawBody: body);
+    } on SocketException catch (e, st) {
+      print('Network error in registerDevice: $e');
+      throw AppException.from(e, st);
+    } on TimeoutException catch (e, st) {
+      print('Timeout in registerDevice: $e');
+      throw AppException.from(e, st);
+    } catch (e, st) {
+      print('Unknown error in registerDevice: $e');
+      throw AppException.from(e, st);
     }
   }
 

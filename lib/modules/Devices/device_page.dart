@@ -33,7 +33,27 @@ class _DevicePageState extends State<DevicePage> {
         return const Center(child: CircularProgressIndicator());
       }
       if (_controller.error.value.isNotEmpty) {
-        return Center(child: Text(_controller.error.value));
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _controller.error.value,
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () {
+                  _controller.loadAll();
+                  _controller.loadTree();
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
       }
 
       return Column(
@@ -45,26 +65,36 @@ class _DevicePageState extends State<DevicePage> {
                 //*---------- All Devices------------
                 RefreshIndicator(
                   onRefresh: _controller.loadAll,
-                  child: _controller.devices.isEmpty
-                      ? const Center(child: Text('No devices found.'))
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _controller.devices.length,
-                          itemBuilder: (_, i) =>
-                              _buildDeviceCard(_controller.devices[i]),
-                        ),
+                  child:
+                      _controller.devices.isEmpty
+                          ? const Center(
+                            child: Text(
+                              'No devices found.',
+                              style: TextStyle(color: Colors.deepOrange),
+                              ))
+                          : ListView.builder(
+                            padding: const EdgeInsets.all(12),
+                            itemCount: _controller.devices.length,
+                            itemBuilder:
+                                (_, i) =>
+                                    _buildDeviceCard(_controller.devices[i]),
+                          ),
                 ),
                 //*------------ Device Tree-----------
                 RefreshIndicator(
                   onRefresh: _controller.loadTree,
-                  child: _controller.tree.isEmpty
-                      ? const Center(child: Text('No device tree available.'))
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _controller.tree.length,
-                          itemBuilder: (_, i) =>
-                              _buildMasterWithSlaves(_controller.tree[i]),
-                        ),
+                  child:
+                      _controller.tree.isEmpty
+                          ? const Center(
+                            child: Text('No device tree available.'),
+                          )
+                          : ListView.builder(
+                            padding: const EdgeInsets.all(12),
+                            itemCount: _controller.tree.length,
+                            itemBuilder:
+                                (_, i) =>
+                                    _buildMasterWithSlaves(_controller.tree[i]),
+                          ),
                 ),
               ],
             ),
@@ -81,8 +111,9 @@ class _DevicePageState extends State<DevicePage> {
                   icon: const Icon(Icons.add),
                   label: const Text('Register Device'),
                   onPressed: () async {
-                    final created =
-                        await Get.to<DeviceModel>(() => const DeviceRegisterPage());
+                    final created = await Get.to<DeviceModel>(
+                      () => const DeviceRegisterPage(),
+                    );
 
                     if (created != null) {
                       // Success: refresh lists, then show success snackbar
@@ -153,6 +184,7 @@ class _DevicePageState extends State<DevicePage> {
       ),
     );
   }
+
   //* ---------- Device Tree (Master with Slaves) ---------- */
   Widget _buildMasterWithSlaves(DeviceNode node) {
     final master = node.master;
@@ -178,14 +210,18 @@ class _DevicePageState extends State<DevicePage> {
           'Master • ${master.effectiveStatus} • ${master.ownerEmail}',
           style: const TextStyle(fontSize: 12),
         ),
-        childrenPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        childrenPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 8,
+        ),
         children: [
           if (slaves.isEmpty)
             const Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('No slaves connected.',
-                  style: TextStyle(color: Colors.black54)),
+              child: Text(
+                'No slaves connected.',
+                style: TextStyle(color: Colors.black54),
+              ),
             )
           else
             ...slaves.map(
@@ -194,8 +230,9 @@ class _DevicePageState extends State<DevicePage> {
                 title: Text(
                   s.deviceName.isNotEmpty ? s.deviceName : s.hardwareIdentifier,
                 ),
-                subtitle:
-                    Text('Slave • ${s.effectiveStatus} • ${s.ownerEmail}'),
+                subtitle: Text(
+                  'Slave • ${s.effectiveStatus} • ${s.ownerEmail}',
+                ),
                 trailing: Icon(
                   s.online ? Icons.circle : Icons.circle_outlined,
                   color: s.online ? Colors.green : Colors.grey,
@@ -209,14 +246,16 @@ class _DevicePageState extends State<DevicePage> {
       ),
     );
   }
+
   //* ---------- Device Details Dialog ---------- */
   void _showDeviceDetailsDialog(DeviceModel device) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           elevation: 8,
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -304,6 +343,7 @@ class _DevicePageState extends State<DevicePage> {
       },
     );
   }
+
   //* ---------- Detail Row Widget ---------- */
   Widget _detailRow(String label, String value) {
     return Padding(

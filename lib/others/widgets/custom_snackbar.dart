@@ -16,34 +16,62 @@ class CustomSnackbar {
     SnackbarPosition position = SnackbarPosition.bottom,
     Duration duration = const Duration(seconds: 3),
   }) {
-    final colors = _palette(type);
+    final ctx = Get.context;
+    if (ctx == null) {
+      debugPrint('⚠️ CustomSnackbar: Get.context is null, cannot show SnackBar');
+      return;
+    }
+
+    final bg = _palette(type);
     final icon = _icon(type);
 
-    if (Get.isSnackbarOpen) Get.closeCurrentSnackbar();
-
-    Get.rawSnackbar(
-      titleText: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 15,
+    final content = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: Colors.white),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      messageText: Text(
-        message,
-        style: const TextStyle(color: Colors.white, fontSize: 13),
-      ),
-      backgroundColor: colors,
-      borderRadius: 8,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      icon: Icon(icon, color: Colors.white),
-      snackPosition: _position(position),
-      duration: duration,
+      ],
     );
+
+    final messenger = ScaffoldMessenger.of(ctx);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: content,
+          backgroundColor: bg,
+          behavior: SnackBarBehavior.floating,
+          duration: duration,
+          margin: _marginForPosition(ctx, position),
+        ),
+      );
   }
 
+  // Convenience wrappers
   void success(String msg, {String title = 'Success'}) =>
       show(title, msg, type: SnackbarType.success);
 
@@ -57,6 +85,7 @@ class CustomSnackbar {
       show(title, msg, type: SnackbarType.info);
 
   // ---------- helpers ----------
+
   Color _palette(SnackbarType type) {
     switch (type) {
       case SnackbarType.success:
@@ -83,14 +112,24 @@ class CustomSnackbar {
     }
   }
 
-  SnackPosition _position(SnackbarPosition pos) {
+  EdgeInsets _marginForPosition(BuildContext context, SnackbarPosition pos) {
+    final base = const EdgeInsets.symmetric(horizontal: 16, vertical: 12);
+    final size = MediaQuery.of(context).size;
+
     switch (pos) {
-      case SnackbarPosition.top:
-        return SnackPosition.TOP;
       case SnackbarPosition.bottom:
-        return SnackPosition.BOTTOM;
+        return base.copyWith(bottom: 16);
+      case SnackbarPosition.top:
+        // Push it near the top using a big bottom margin
+        return EdgeInsets.fromLTRB(16, 16, 16, size.height - 120);
       case SnackbarPosition.center:
-        return SnackPosition.TOP; // GetX doesn’t have true CENTER
+        // Rough center-ish
+        return EdgeInsets.fromLTRB(
+          16,
+          size.height / 2 - 40,
+          16,
+          size.height / 2 - 40,
+        );
     }
   }
 }

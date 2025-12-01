@@ -256,6 +256,8 @@ class _PackagePageState extends State<PackagePage> {
     );
   }
 
+  //*________________________HELPERS________________________//
+
   Future<void> _handleSelect(
     PackageModel pkg,
     int masters,
@@ -275,22 +277,34 @@ class _PackagePageState extends State<PackagePage> {
 
     // pull user info (safe fallbacks)
     final UserModel? u = _userCtrl.me.value;
+
+    final String? fullName = u?.fullName;
+    final String? email = u?.email;
+    final String? address = u?.address;
+    final String? phone = u?.phoneNumber;
+
     final String customerName =
-        (u?.fullName?.trim().isNotEmpty ?? false)
-            ? u!.fullName!.trim()
-            : (u?.email.split('@').first ?? 'Customer');
+        (fullName != null && fullName.trim().isNotEmpty)
+            ? fullName.trim()
+            : (email != null && email.contains('@')
+                ? email.split('@').first
+                : 'Customer');
+
     final String customerAddress =
-        (u?.address?.trim().isNotEmpty ?? false)
-            ? u!.address!.trim()
+        (address != null && address.trim().isNotEmpty)
+            ? address.trim()
             : 'Dhaka, Bangladesh';
+
     final String customerPhone =
-        (u?.phoneNumber.trim().isNotEmpty ?? false)
-            ? u!.phoneNumber.trim()
+        (phone != null && phone.trim().isNotEmpty)
+            ? phone.trim()
             : '01700000000';
+
     final String customerEmail =
-        (u?.email.trim().isNotEmpty ?? false)
-            ? u!.email.trim()
+        (email != null && email.trim().isNotEmpty)
+            ? email.trim()
             : 'customer@example.com';
+
     const String customerCity = 'Dhaka';
     const String customerPostCode = '1212';
 
@@ -417,17 +431,43 @@ class _PackagePageState extends State<PackagePage> {
     }
 
     if (paid) {
-      //_________________Call Update Order Status API_________________//
-      await _orderCtrl.markOrderPaid(userId: userId, orderId: created.id);
+      //_________________Notify backend about successful payment_________________//
+      try {
+        await _orderCtrl.markOrderPaid(
+          userId: userId,
+          orderId: created.id,
+          transactionId: init.transactionId.toString(),
+        );
+      } catch (e, st) {
+        // Don't break UX if notify fails; order may already be paid on backend
+        debugPrint('⚠️ markOrderPaid failed (ignored in UI): $e\n$st');
+      }
 
       print('🔔 SNACK [Payment]: Payment successful ✅');
-      Get.snackbar('Payment', 'Payment successful ✅');
-      //_markLocalOrderStatus(_orderCtrl, created, 'paid');
-      //await _orderCtrl.loadOrders(userId: userId);
-      Get.toNamed('/index', arguments: {'tab': 3}); // → History tab
+
+      // ✅ Show snackbar from a safe context using ScaffoldMessenger
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment successful ✅'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      // Then navigate wherever you want, e.g. orders/history:
+      // If you were previously going to /index with a tab, keep that:
+      Get.offAllNamed('/index', arguments: {'tab': 0});
+      //Get.toNamed('/orders');
     } else {
       print('🔔 SNACK [Payment]: Payment cancelled/failed');
-      Get.snackbar('Payment', 'Payment cancelled');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment failed!❌'),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
       _markLocalOrderStatus(_orderCtrl, created, 'not_paid');
       await _orderCtrl.loadOrders(userId: userId);
     }

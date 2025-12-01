@@ -1,3 +1,4 @@
+import '/others/errors/app_error_messages.dart';
 import 'package:get/get.dart';
 import 'faq_model.dart';
 import 'faq_service.dart';
@@ -22,16 +23,23 @@ class FaqController extends GetxController {
       final data = await _service.fetchFaq(apiUrl: apiUrl);
       faq.value = data;
 
+      // If FAQ loaded but empty → show module-specific message
+      if (data.categories.isEmpty) {
+        error(AppErrorMessages.faqEmpty);
+        filteredCategories.clear();
+        return;
+      }
+
       // initial: no filter → show all categories
       _applyFilter();
     } catch (e, st) {
       // Normalize everything into AppException
       final appEx = AppException.from(e, st);
 
-      // For showing inline error text on page (if you use it)
+      // inline error on page
       error(appEx.toUserMessage());
 
-      // Also trigger global UI handler (snackbar)
+      // log & global snackbar
       AppErrorHandler.handle(appEx, stackTrace: st);
     } finally {
       isLoading(false);

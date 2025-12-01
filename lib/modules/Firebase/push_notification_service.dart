@@ -9,6 +9,8 @@ import '/others/utils/api.dart';
 import '/others/widgets/alarm_service.dart';              // ensureAlarm()
 import '/others/widgets/custom_dialog.dart' as ui;       // showSilenceAlarmDialog / showResolveDialog
 import '/modules/firebase/message.dart';                 // AppMessages, FirebaseMessage
+//import '/others/widgets/custom_snackbar.dart';
+
 
 class PushNotificationService {
   // ─────────────────────────────────────────────────────────────────────────────
@@ -412,10 +414,10 @@ class PushNotificationService {
     }
   }
 
-  static String? _readStoredToken() {
-    final box = GetStorage();
-    return box.read<String>(_kStoredFcmTokenKey);
-  }
+  // static String? _readStoredToken() {
+  //   final box = GetStorage();
+  //   return box.read<String>(_kStoredFcmTokenKey);
+  // }
 
   // ── backend helpers ─────────────────────────────────────────────────────────
   static Future<bool> _deleteDeviceById(int id) async {

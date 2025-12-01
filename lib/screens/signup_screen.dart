@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '/modules/auth/auth_handle.dart';
+import 'signup_otp_screen.dart';
 import '/others/widgets/auth_button.dart';
 import '/others/theme/app_theme.dart';
-
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -27,6 +28,34 @@ class _SignupScreenState extends State<SignupScreen> {
     phoneController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSignup() async {
+    if (_isLoading) return;
+
+    FocusScope.of(context).unfocus();
+
+    final ok = await AuthHandle().signup(
+      context: context,
+      nameController: nameController,
+      emailController: emailController,
+      passwordController: passwordController,
+      phoneController: phoneController,
+      setLoading: (loading) {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = loading;
+        });
+      },
+    );
+
+    if (ok && mounted) {
+      Get.to(
+        () => SignupOtpScreen(
+          email: emailController.text.trim(),
+        ),
+      );
+    }
   }
 
   @override
@@ -62,9 +91,9 @@ class _SignupScreenState extends State<SignupScreen> {
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 24),
-
                         TextField(
                           controller: nameController,
+                          textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: "Full Name",
                             prefixIcon: Icon(Icons.person),
@@ -72,9 +101,10 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-
                         TextField(
                           controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: "Email",
                             prefixIcon: Icon(Icons.email),
@@ -82,10 +112,10 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-
                         TextField(
                           controller: phoneController,
                           keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: "Phone Number",
                             prefixIcon: Icon(Icons.phone),
@@ -93,10 +123,10 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-
                         TextField(
                           controller: passwordController,
                           obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.done,
                           decoration: InputDecoration(
                             labelText: "Password",
                             prefixIcon: const Icon(Icons.lock),
@@ -116,37 +146,23 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: _isLoading ? null : () => AuthHandle().signup(
-                              context: context,
-                              nameController: nameController,
-                              emailController: emailController,
-                              passwordController: passwordController,
-                              phoneController: phoneController,
-                              setLoading: (loading) {
-                                setState(() {
-                                  _isLoading = loading;
-                                });
-                              },
-                            ),
-                            child:
-                                _isLoading
-                                    ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                    : const Text('Sign Up'),
+                            onPressed: _isLoading ? null : _handleSignup,
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Sign Up'),
                           ),
                         ),
-                        SizedBox(height: 12),
-
+                        const SizedBox(height: 12),
                         AuthButton(
                           routeName: "/login",
                           buttonText: "Login",
@@ -157,7 +173,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
                 Column(
                   children: [
                     const Text("Powered by"),

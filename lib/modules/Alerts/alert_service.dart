@@ -1,4 +1,6 @@
-import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
+import '/others/errors/app_error_handler.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'alert_model.dart';
@@ -17,16 +19,27 @@ class AlertService {
   //*---------- 🔹 Fetch all alerts (paginated API)------------
   Future<List<AlertModel>> fetchAlerts({required String apiUrl}) async {
     final uri = Uri.parse(apiUrl);
-    final response = await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 20));
 
-    print("Response: ${response.body}");
+    try {
+      final res = await http.get(
+        uri,
+        headers: _headers(),
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final List alertsJson = data['results'];
+      print("Response: ${res.body}");
+
+      final data = AppHttp.parseJsonObject<Map<String, dynamic>>(
+        res.body,
+        (json) => json,
+      );
+
+      final List alertsJson = data['results'] as List;
       return alertsJson.map((e) => AlertModel.fromJson(e)).toList();
-    } else {
-      throw Exception('Failed to load alerts. Status: ${response.statusCode}');
+    } on AppException {
+      rethrow; // let controller/UI decide
+    } catch (e, st) {
+      print('Error in fetchAlerts service: $e');
+      throw AppException.from(e, st);
     }
   }
 
@@ -36,16 +49,27 @@ class AlertService {
     required int deviceId,
   }) async {
     final uri = Uri.parse('$baseUrl/devices/$deviceId/alerts');
-    final response = await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 20));
 
-    print("Device Alerts Response: ${response.body}");
+    try {
+      final res = await AppHttp.get(
+        uri,
+        headers: _headers(),
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final List alertsJson = data['results'];
+      print("Device Alerts Response: ${res.body}");
+
+      final data = AppHttp.parseJsonObject<Map<String, dynamic>>(
+        res.body,
+        (json) => json,
+      );
+
+      final List alertsJson = data['results'] as List;
       return alertsJson.map((e) => AlertModel.fromJson(e)).toList();
-    } else {
-      throw Exception('Failed to load alerts for device $deviceId');
+    } on AppException {
+      rethrow;
+    } catch (e, st) {
+      print('Error in fetchAlertsByDevice service: $e');
+      throw AppException.from(e, st);
     }
   }
 
@@ -55,12 +79,35 @@ class AlertService {
     required int alertId,
   }) async {
     final uri = Uri.parse('$baseUrl/alerts/$alertId/resolve/');
-    final response = await http.post(uri, headers: _headers());
 
-    print("Resolve Alert Response (${response.statusCode}): ${response.body}");
+    try {
+      final response = await http
+          .post(uri, headers: _headers())
+          .timeout(const Duration(seconds: 20));
 
-    if (response.statusCode == 200) return true;
-    throw Exception('Failed to resolve alert #$alertId (${response.statusCode})');
+      print(
+          "Resolve Alert Response (${response.statusCode}): ${response.body}");
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+
+      throw _mapStatusToAppException(
+        response,
+        context: 'Failed to resolve alert #$alertId',
+      );
+    } on AppException {
+      rethrow;
+    } on SocketException catch (e, st) {
+      print('Network error in resolveAlert: $e');
+      throw AppException.from(e, st);
+    } on TimeoutException catch (e, st) {
+      print('Timeout in resolveAlert: $e');
+      throw AppException.from(e, st);
+    } catch (e, st) {
+      print('Unknown error in resolveAlert: $e');
+      throw AppException.from(e, st);
+    }
   }
 
   //*------- 🔹 Acknowledge an alert (POST /alerts/<id>/acknowledge/)-------
@@ -69,11 +116,72 @@ class AlertService {
     required int alertId,
   }) async {
     final uri = Uri.parse('$baseUrl/alerts/$alertId/acknowledge/');
-    final response = await http.post(uri, headers: _headers());
 
-    print("Acknowledge Alert Response (${response.statusCode}): ${response.body}");
+    try {
+      final response = await http
+          .post(uri, headers: _headers())
+          .timeout(const Duration(seconds: 20));
 
-    if (response.statusCode == 200) return true;
-    throw Exception('Failed to acknowledge alert #$alertId (${response.statusCode})');
+      print(
+          "Acknowledge Alert Response (${response.statusCode}): ${response.body}");
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+
+      throw _mapStatusToAppException(
+        response,
+        context: 'Failed to acknowledge alert #$alertId',
+      );
+    } on AppException {
+      rethrow;
+    } on SocketException catch (e, st) {
+      print('Network error in acknowledgeAlert: $e');
+      throw AppException.from(e, st);
+    } on TimeoutException catch (e, st) {
+      print('Timeout in acknowledgeAlert: $e');
+      throw AppException.from(e, st);
+    } catch (e, st) {
+      print('Unknown error in acknowledgeAlert: $e');
+      throw AppException.from(e, st);
+    }
+  }
+
+  // 🔧 Map HTTP status → AppException with proper type
+  AppException _mapStatusToAppException(
+    http.Response res, {
+    required String context,
+  }) {
+    final code = res.statusCode;
+
+    if (code == 401) {
+      return AppException(
+        type: AppErrorType.unauthorized,
+        message: '$context (unauthorized)',
+        raw: res,
+      );
+    }
+
+    if (code == 404) {
+      return AppException(
+        type: AppErrorType.notFound,
+        message: '$context (not found)',
+        raw: res,
+      );
+    }
+
+    if (code >= 500) {
+      return AppException(
+        type: AppErrorType.server,
+        message: '$context (server error $code)',
+        raw: res,
+      );
+    }
+
+    return AppException(
+      type: AppErrorType.unknown,
+      message: '$context (HTTP $code)',
+      raw: res,
+    );
   }
 }

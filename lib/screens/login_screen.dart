@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '/modules/auth/auth_controller.dart';
+import 'package:get/get.dart';
 import '/modules/auth/auth_handle.dart';
 import '/others/widgets/auth_button.dart';
 import '/others/theme/app_theme.dart';
@@ -18,7 +18,29 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscureText = true;
   bool _isLoading = false;
 
-  final AuthController authController = AuthController();
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    final ok = await AuthHandle().login(
+      context: context,
+      emailController: emailController,
+      passwordController: passwordController,
+      setLoading: (loading) {
+        setState(() {
+          _isLoading = loading;
+        });
+      },
+    );
+
+    if (ok && mounted) {
+      Get.toNamed('/login-otp');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,8 +54,6 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 100),
-
-                // Login Card
                 Card(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
@@ -55,20 +75,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 24),
-
-                        // Email
                         TextField(
                           controller: emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: const InputDecoration(
-                            labelText: "Email",
+                            labelText: "Email or Phone",
                             prefixIcon: Icon(Icons.email),
                             border: OutlineInputBorder(),
                           ),
                         ),
                         const SizedBox(height: 16),
-
-                        // Password
                         TextField(
                           controller: passwordController,
                           obscureText: _obscureText,
@@ -88,36 +104,33 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
-
-                        // Login Button
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              Get.toNamed('/forgot-password');
+                            },
+                            child: const Text('Forgot Password?'),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: _isLoading ? null : () => AuthHandle().login(
-                              context: context,
-                              emailController: emailController,
-                              passwordController: passwordController,
-                              setLoading: (loading) {
-                                setState(() {
-                                  _isLoading = loading;
-                                });
-                              },
-                            ),
-                            child:
-                                _isLoading
-                                    ? const SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                    : const Text("Login"),
+                            onPressed: _isLoading ? null : _handleLogin,
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text("Login"),
                           ),
                         ),
-                        SizedBox(height: 12),
-                        // Signup Link
+                        const SizedBox(height: 12),
                         AuthButton(
                           routeName: "/signup",
                           buttonText: "Sign Up",
@@ -127,10 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 30),
-
-                // Powered by
                 Column(
                   children: [
                     const Text(

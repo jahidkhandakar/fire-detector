@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:fire_alarm/modules/about/about_page.dart';
 import 'package:fire_alarm/modules/faq/faq_page.dart';
+import 'package:fire_alarm/modules/subscription/subscription_page.dart';
+import 'package:fire_alarm/screens/forgot_password_screen.dart';
+import 'package:fire_alarm/screens/login_otp_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -72,6 +75,9 @@ class FireAlarm extends StatelessWidget {
         GetPage(name: '/checkout', page: () => ShurjoPayCheckoutPage()),
         GetPage(name: '/about', page: () => AboutPage()),
         GetPage(name: '/faq', page: () => FaqPage()),
+        GetPage(name: '/forgot-password', page: () => ForgotPasswordScreen()),
+        GetPage(name: '/login-otp', page: () => LoginOtpScreen()),
+        GetPage(name: '/sub', page: () => SubscriptionPage())
       ],
     );
   }

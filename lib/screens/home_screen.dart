@@ -101,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               //-------------------------------------------//
               const SizedBox(height: 10),
-              //*-----My Orders Button-------*//
+              //*----Previous Orders Button-------*//
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -111,6 +111,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme().secondaryColor,
                     foregroundColor: const Color.fromARGB(255, 4, 2, 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
+                    textStyle: const TextStyle(fontSize: 18),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              //*----Subscription Button-------*//
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Get.toNamed('/sub'),
+                  icon: const Icon(Icons.subscriptions),
+                  label: const Text('View Subscriptions'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme().secondaryColor,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 32,
                       vertical: 16,

@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'shurjopay_models.dart';
 import 'shurjopay_service.dart';
+import '/others/errors/app_error_handler.dart';
 
 class ShurjoPayController extends GetxController {
   final ShurjoPayService _service = ShurjoPayService();
@@ -9,14 +10,18 @@ class ShurjoPayController extends GetxController {
   final error = ''.obs;
 
   //*______________ Start payment ______________*//
-  Future<ShurjoInitiateResponse?> startPayment(Map<String, dynamic> payload) async {
+  Future<ShurjoInitiateResponse?> startPayment(
+    Map<String, dynamic> payload,
+  ) async {
     try {
       isProcessing.value = true;
       error.value = '';
       final res = await _service.initiate(payload);
       return res;
-    } catch (e) {
-      error.value = 'Payment initiation failed: $e';
+    } catch (e, st) {
+      final appEx = AppException.from(e, st);
+      error.value = appEx.toUserMessage();
+      AppErrorHandler.handle(appEx, stackTrace: st);
       return null;
     } finally {
       isProcessing.value = false;
@@ -29,36 +34,41 @@ class ShurjoPayController extends GetxController {
       error.value = '';
       final res = await _service.verify(orderId);
       return res;
-    } catch (e) {
-      error.value = 'Verification failed: $e';
+    } catch (e, st) {
+      final appEx = AppException.from(e, st);
+      error.value = appEx.toUserMessage();
+      AppErrorHandler.handle(appEx, stackTrace: st);
       return null;
     }
   }
 
   //*______________ Handle Return (browser redirect) ______________*//
   /// Calls GET /shurjopay/return/?order_id=... on your server.
-  /// Returns a ShurjoVerifyResponse built from the embedded `details`
-  /// (so you can still check `isSuccess` == sp_code == '1000').
+  /// Returns a ShurjoVerifyResponse built from the embedded `details`.
   Future<ShurjoVerifyResponse?> returnPayment(String orderId) async {
     try {
       error.value = '';
       final res = await _service.returnUrl(orderId);
       return res; // may be null if details missing
-    } catch (e) {
-      error.value = 'Return failed: $e';
+    } catch (e, st) {
+      final appEx = AppException.from(e, st);
+      error.value = appEx.toUserMessage();
+      AppErrorHandler.handle(appEx, stackTrace: st);
       return null;
     }
   }
 
   //*______________ Handle Cancel (browser redirect) ______________*//
   /// Calls GET /shurjopay/cancel/?order_id=...
-  /// Returns true on HTTP 200.
+  /// Returns true on success, false on error.
   Future<bool> cancelPayment(String orderId) async {
     try {
       error.value = '';
       return await _service.cancel(orderId);
-    } catch (e) {
-      error.value = 'Cancel failed: $e';
+    } catch (e, st) {
+      final appEx = AppException.from(e, st);
+      error.value = appEx.toUserMessage();
+      AppErrorHandler.handle(appEx, stackTrace: st);
       return false;
     }
   }
@@ -70,8 +80,10 @@ class ShurjoPayController extends GetxController {
     try {
       error.value = '';
       return await _service.status(transactionId);
-    } catch (e) {
-      error.value = 'Status fetch failed: $e';
+    } catch (e, st) {
+      final appEx = AppException.from(e, st);
+      error.value = appEx.toUserMessage();
+      AppErrorHandler.handle(appEx, stackTrace: st);
       return null;
     }
   }

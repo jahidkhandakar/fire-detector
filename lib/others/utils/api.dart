@@ -3,11 +3,15 @@ class Api {
   static const String baseUrl = "https://firealarm.pranisheba.com.bd";
 
   // Auth
-  static const String register     = "$baseUrl/auth/register";
-  static const String login        = "$baseUrl/auth/login";
-  static const String refreshToken = "$baseUrl/auth/refresh";
-  static const String userDetails  = "$baseUrl/auth/me";
-
+  static const String register       = "$baseUrl/auth/register/init";
+  static const String regVerify      = "$baseUrl/auth/register/verify";
+  static const String login          = "$baseUrl/auth/login";
+  static const String logVerify      = "$baseUrl/auth/login/verify";
+  static const String refreshToken   = "$baseUrl/auth/refresh";
+  static const String userDetails    = "$baseUrl/auth/me";
+  static const String forgotPass     = "$baseUrl/auth/password/forgot/init";
+  static const String forgotComplete = "$baseUrl/auth/password/forgot/complete";
+  static const String resetPass      = "$baseUrl/auth/change-password";
   // Alerts
   static const String alerts  = "$baseUrl/alerts/";
   
@@ -20,6 +24,11 @@ class Api {
   // Orders
   static const String orders = "$baseUrl/orders/";
   static const String ordersUpdateStatus = '$baseUrl/orders/update_status/';
+  static const String ordersPaymentNotify = '$baseUrl/orders/payment/notify/';
+
+  // Subscriptions
+  static const String subscriptionsMe = '$baseUrl/subscriptions/me';
+
 
   //Payments
   static const shurjoInitiate = '$baseUrl/shurjopay/initiate/';

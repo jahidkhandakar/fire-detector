@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
 import 'order_model.dart';
 import 'order_service.dart';
+import '/others/errors/app_error_handler.dart';
 
 class OrderController extends GetxController {
   final OrderService _service = OrderService();
@@ -15,61 +16,86 @@ class OrderController extends GetxController {
       isLoading.value = true;
       error.value = '';
       debugPrint('🔄 Loading orders for userId=$userId');
+
       orders.value = await _service.fetchOrders(userId);
       debugPrint('✅ Loaded ${orders.length} orders');
     } catch (e, st) {
       debugPrint('❌ loadOrders error: $e\n$st');
-      error.value = e.toString();
+      final appEx = AppException.from(e, st);
+      error.value = appEx.toUserMessage();
+      AppErrorHandler.handle(appEx, stackTrace: st);
     } finally {
       isLoading.value = false;
     }
   }
+
   //__________________Get Order by ID___________________//
-  Future<OrderModel?> getOrderById({required int userId, required int orderId}) async {
+  Future<OrderModel?> getOrderById({
+    required int userId,
+    required int orderId,
+  }) async {
     try {
       debugPrint('🔄 Fetch order by id=$orderId for userId=$userId');
       final o = await _service.fetchOrderById(userId, orderId);
       return o;
     } catch (e, st) {
       debugPrint('❌ getOrderById error: $e\n$st');
-      error.value = e.toString();
+      final appEx = AppException.from(e, st);
+      error.value = appEx.toUserMessage();
+      AppErrorHandler.handle(appEx, stackTrace: st);
       return null;
     }
   }
+
   //__________________Create Order__________________//
-  Future<OrderModel?> createOrder({required int userId, required Map<String, dynamic> body}) async {
+  Future<OrderModel?> createOrder({
+    required int userId,
+    required Map<String, dynamic> body,
+  }) async {
     try {
       error.value = '';
       debugPrint('🧾 createOrder called for userId=$userId');
       final o = await _service.createOrder(userId, body);
       orders.insert(0, o);
-      debugPrint('✅ Order created: id=${o.id}, reference=${o.reference}, status=${o.orderStatus}');
+      debugPrint(
+        '✅ Order created: id=${o.id}, reference=${o.reference}, status=${o.orderStatus}',
+      );
       return o;
     } catch (e, st) {
       debugPrint('❌ createOrder error: $e\n$st');
-      error.value = e.toString();
+      final appEx = AppException.from(e, st);
+      error.value = appEx.toUserMessage();
+      AppErrorHandler.handle(appEx, stackTrace: st);
       return null;
     }
   }
-  //_____________________Mark Order Paid_____________________//
+
+
+  //_______________Mark Order Paid via notify API_______________//
   Future<void> markOrderPaid({
     required int userId,
     required int orderId,
+    required String transactionId,
   }) async {
     try {
       error.value = '';
-      // Call backend to set order_status = "paid"
-      await _service.updateOrderStatus(
-        userId: userId,
-        orderId: orderId,
-        status: 'paid',
+      debugPrint(
+        '🔄 notifyPayment for userId=$userId, orderId=$orderId, tx=$transactionId',
       );
 
-      // simplest + clean: reload list so UI updates
+      // Call backend to notify payment (marks order as paid)
+      await _service.notifyPayment(
+        orderId: orderId,
+        transactionId: transactionId,
+      );
+
+      // Reload list so UI sees updated status
       await loadOrders(userId: userId);
     } catch (e, st) {
       debugPrint('❌ markOrderPaid error: $e\n$st');
-      error.value = e.toString();
+      final appEx = AppException.from(e, st);
+      error.value = appEx.toUserMessage();
+      AppErrorHandler.handle(appEx, stackTrace: st);
     }
   }
 }

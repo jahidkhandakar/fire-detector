@@ -48,7 +48,12 @@ class _AlertPageState extends State<AlertPage> {
         }
 
         if (controller.alerts.isEmpty) {
-          return const Center(child: Text('No alerts found.'));
+          return const Center(
+            child: Text( 
+              'No alerts found.',
+              style: TextStyle(color: Colors.deepOrange),
+            )
+          );
         }
 
         return RefreshIndicator(

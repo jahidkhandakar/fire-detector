@@ -1,8 +1,9 @@
+import '/others/errors/app_error_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:geolocator/geolocator.dart'; 
 import 'device_model.dart';
 import 'device_service.dart';
+import 'location_helper.dart';    
 
 class DeviceRegisterPage extends StatefulWidget {
   const DeviceRegisterPage({super.key});
@@ -50,40 +51,29 @@ class _DeviceRegisterPageState extends State<DeviceRegisterPage> {
           _selectedMasterId ??= _masters.first.id;
         }
       });
-    } catch (e) {
-      setState(() => _error = 'Failed to load masters: $e');
+    } on AppException catch (ex, st) {
+      // Use central error messages for UI
+      setState(() => _error = ex.toUserMessage());
+      print('Failed to load masters (AppException): $ex');
+      AppErrorHandler.handle(ex, stackTrace: st);
+    } catch (e, st) {
+      setState(() => _error = 'Failed to load masters.');
+      print('Failed to load masters (unknown): $e');
+      AppErrorHandler.handle(e, stackTrace: st);
     } finally {
       setState(() => _loadingMasters = false);
     }
   }
 
-  // ---- NEW: Use device GPS to auto-fill lat/lng ----
+  // ---- Use device GPS to auto-fill lat/lng via LocationHelper ----
   Future<void> _useCurrentLocation() async {
     setState(() => _error = '');
     try {
-      // 1) Services ON?
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        throw Exception('Location services are disabled. Please enable GPS.');
-      }
-      // 2) Permission flow
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          throw Exception('Location permission denied.');
-        }
-      }
-      if (permission == LocationPermission.deniedForever) {
-        throw Exception('Location permissions are permanently denied. '
-            'Enable them from Settings.');
-      }
-      // 3) Get current position
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-      );
+      final pos = await LocationHelper.getCurrentPosition();
+
       _latCtrl.text = pos.latitude.toStringAsFixed(6);
       _lngCtrl.text = pos.longitude.toStringAsFixed(6);
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -92,16 +82,15 @@ class _DeviceRegisterPageState extends State<DeviceRegisterPage> {
           duration: Duration(seconds: 2),
         ),
       );
-    } catch (e) {
-      setState(() => _error = e.toString());
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+    } on AppException catch (ex, st) {
+      // For inline error, we can show a specific message
+      setState(() => _error = ex.message);
+      print('Location error (AppException): $ex');
+      AppErrorHandler.handle(ex, stackTrace: st); // shows generic snackbar
+    } catch (e, st) {
+      setState(() => _error = 'Failed to fetch current location.');
+      print('Location error (unknown): $e');
+      AppErrorHandler.handle(e, stackTrace: st);
     }
   }
 
@@ -140,10 +129,19 @@ class _DeviceRegisterPageState extends State<DeviceRegisterPage> {
         return;
       }
 
-      // Failure: keep on page and show inline error
-      setState(() => _error = 'Registration failed (code ${result.statusCode}).');
-    } catch (e) {
-      setState(() => _error = 'Register failed: $e');
+      // Failure: keep on page and show inline error (HTTP-level failure)
+      setState(() {
+        _error = 'Registration failed (code ${result.statusCode}).';
+      });
+    } on AppException catch (ex, st) {
+      // Network / timeout / parsing / unauthorized etc.
+      setState(() => _error = ex.toUserMessage());
+      print('Register device failed (AppException): $ex');
+      AppErrorHandler.handle(ex, stackTrace: st);
+    } catch (e, st) {
+      setState(() => _error = 'Registration failed.');
+      print('Register device failed (unknown): $e');
+      AppErrorHandler.handle(e, stackTrace: st);
     } finally {
       setState(() => _submitting = false);
     }
@@ -174,7 +172,8 @@ class _DeviceRegisterPageState extends State<DeviceRegisterPage> {
                       child: _input(
                         label: 'Latitude',
                         controller: _latCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -182,7 +181,8 @@ class _DeviceRegisterPageState extends State<DeviceRegisterPage> {
                       child: _input(
                         label: 'Longitude',
                         controller: _lngCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
                       ),
                     ),
                   ],
@@ -202,7 +202,8 @@ class _DeviceRegisterPageState extends State<DeviceRegisterPage> {
                 // Role selector
                 Row(
                   children: [
-                    const Text('Role:', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const Text('Role:',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(width: 12),
                     ChoiceChip(
                       label: const Text('Master'),
@@ -228,20 +229,26 @@ class _DeviceRegisterPageState extends State<DeviceRegisterPage> {
                   if (!_loadingMasters && _masters.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Text('No masters available. Register a master first.'),
+                      child: Text(
+                        'No masters available. Register a master first.',
+                        style: TextStyle(color: Colors.deepOrange),
+                      ),
                     ),
                   if (_masters.isNotEmpty)
                     DropdownButtonFormField<int>(
                       value: _selectedMasterId ?? _masters.first.id,
                       items: _masters
-                          .map((m) => DropdownMenuItem<int>(
-                                value: m.id,
-                                child: Text(
-                                  '${m.deviceName.isNotEmpty ? m.deviceName : m.hardwareIdentifier} (ID ${m.id})',
-                                ),
-                              ))
+                          .map(
+                            (m) => DropdownMenuItem<int>(
+                              value: m.id,
+                              child: Text(
+                                '${m.deviceName.isNotEmpty ? m.deviceName : m.hardwareIdentifier} (ID ${m.id})',
+                              ),
+                            ),
+                          )
                           .toList(),
-                      onChanged: (v) => setState(() => _selectedMasterId = v),
+                      onChanged: (v) =>
+                          setState(() => _selectedMasterId = v),
                       decoration: InputDecoration(
                         labelText: 'Select Master',
                         border: OutlineInputBorder(
@@ -255,7 +262,10 @@ class _DeviceRegisterPageState extends State<DeviceRegisterPage> {
                   const SizedBox(height: 10),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(_error, style: const TextStyle(color: Colors.red)),
+                    child: Text(
+                      _error,
+                      style: const TextStyle(color: Colors.red),
+                    ),
                   ),
                 ],
 

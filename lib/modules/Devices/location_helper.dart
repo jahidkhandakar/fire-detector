@@ -1,4 +1,6 @@
+import 'package:fire_alarm/others/errors/app_error_handler.dart';
 import 'package:geolocator/geolocator.dart';
+
 
 class LocationHelper {
   /// Ensures permission + service ON, then returns Position.
@@ -6,7 +8,10 @@ class LocationHelper {
     // 1) Check service
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw Exception('Location services are disabled. Please enable GPS.');
+      throw AppException(
+        type: AppErrorType.unknown,
+        message: 'Location services are disabled. Please enable GPS.',
+      );
     }
 
     // 2) Check permission
@@ -15,20 +20,28 @@ class LocationHelper {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        throw Exception('Location permission denied.');
+        throw AppException(
+          type: AppErrorType.unknown,
+          message: 'Location permission denied by user.',
+        );
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      throw Exception(
-        'Location permissions are permanently denied. '
-        'Enable them from Settings.',
+      throw AppException(
+        type: AppErrorType.unknown,
+        message:
+            'Location permissions are permanently denied. Enable from Settings.',
       );
     }
 
-    // 3) Get current position (balanced accuracy)
-    return Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.best,
-    );
+    // 3) Get current position (best accuracy)
+    try {
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+      );
+    } catch (e, st) {
+      throw AppException.from(e, st);
+    }
   }
 }

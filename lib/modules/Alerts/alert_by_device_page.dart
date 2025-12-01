@@ -54,7 +54,10 @@ class AlertByDevicePage extends StatelessWidget {
                 );
               }
               if (deviceCtrl.devices.isEmpty) {
-                return const Text('No devices found.');
+                return const Text(
+                  'No devices found.',
+                  style: TextStyle(color: Colors.deepOrange),
+                );
               }
 
               return DropdownButtonFormField<int>(
@@ -95,7 +98,10 @@ class AlertByDevicePage extends StatelessWidget {
                 }
                 if (alertCtrl.alerts.isEmpty) {
                   return const Center(
-                    child: Text('No alerts for this device.'),
+                    child: Text(
+                      'No alerts for this device.',
+                      style: TextStyle(color: Colors.deepOrange),
+                      ),
                   );
                 }
 

@@ -1,3 +1,4 @@
+import 'package:fire_alarm/others/errors/app_error_handler.dart';
 import 'package:get/get.dart';
 import 'alert_model.dart';
 import 'alert_service.dart';
@@ -15,11 +16,19 @@ class AlertController extends GetxController {
     try {
       isLoading(true);
       error('');
+
       final data = await _service.fetchAlerts(apiUrl: apiUrl);
       alerts.assignAll(data);
-    } catch (e) {
-      error('Failed to load alerts: $e');
-      print('Error fetching alerts: $e');
+    } on AppException catch (ex, st) {
+      // user-facing message from central messages file
+      error(ex.toUserMessage());
+      print('Error fetching alerts (AppException): $ex');
+      AppErrorHandler.handle(ex, stackTrace: st);
+    } catch (e, st) {
+      // any unexpected errors
+      error('Failed to load alerts.');
+      print('Error fetching alerts (unknown): $e');
+      AppErrorHandler.handle(e, stackTrace: st);
     } finally {
       isLoading(false);
     }
@@ -30,14 +39,20 @@ class AlertController extends GetxController {
     try {
       isLoading(true);
       error('');
+
       final data = await _service.fetchAlertsByDevice(
         baseUrl: Api.baseUrl,
         deviceId: deviceId,
       );
       alerts.assignAll(data);
-    } catch (e) {
-      error('Failed to load device alerts: $e');
-      print('Error fetching device alerts: $e');
+    } on AppException catch (ex, st) {
+      error(ex.toUserMessage());
+      print('Error fetching device alerts (AppException): $ex');
+      AppErrorHandler.handle(ex, stackTrace: st);
+    } catch (e, st) {
+      error('Failed to load device alerts.');
+      print('Error fetching device alerts (unknown): $e');
+      AppErrorHandler.handle(e, stackTrace: st);
     } finally {
       isLoading(false);
     }
@@ -50,6 +65,7 @@ class AlertController extends GetxController {
         baseUrl: Api.baseUrl,
         alertId: alertId,
       );
+
       if (success) {
         final index = alerts.indexWhere((a) => a.id == alertId);
         if (index != -1) {
@@ -68,9 +84,14 @@ class AlertController extends GetxController {
           alerts.refresh();
         }
       }
-    } catch (e) {
-      error('Failed to resolve alert: $e');
-      print('Error resolving alert: $e');
+    } on AppException catch (ex, st) {
+      error(ex.toUserMessage());
+      print('Error resolving alert (AppException): $ex');
+      AppErrorHandler.handle(ex, stackTrace: st);
+    } catch (e, st) {
+      error('Failed to resolve alert.');
+      print('Error resolving alert (unknown): $e');
+      AppErrorHandler.handle(e, stackTrace: st);
     }
   }
 
@@ -99,9 +120,14 @@ class AlertController extends GetxController {
           alerts.refresh();
         }
       }
-    } catch (e) {
-      error('Failed to acknowledge alert: $e');
-      print('Error acknowledging alert: $e');
+    } on AppException catch (ex, st) {
+      error(ex.toUserMessage());
+      print('Error acknowledging alert (AppException): $ex');
+      AppErrorHandler.handle(ex, stackTrace: st);
+    } catch (e, st) {
+      error('Failed to acknowledge alert.');
+      print('Error acknowledging alert (unknown): $e');
+      AppErrorHandler.handle(e, stackTrace: st);
     }
   }
 }

@@ -16,14 +16,26 @@ class FaqService {
   Future<FaqModel> fetchFaq({required String apiUrl}) async {
     final uri = Uri.parse(apiUrl);
 
-    final res = await AppHttp.get(
-      uri,
-      headers: _headers(),
-    );
+    try {
+      final res = await AppHttp.get(
+        uri,
+        headers: _headers(),
+      );
 
-    return AppHttp.parseJsonObject(
-      res.body,
-      (json) => FaqModel.fromJson(json),
-    );
+      // Optional debug log
+      print('FAQ Response [${res.statusCode}]: ${res.body}');
+
+      return AppHttp.parseJsonObject(
+        res.body,
+        (json) => FaqModel.fromJson(json),
+      );
+    } on AppException {
+      // AppHttp already mapped status / timeouts / parsing etc.
+      rethrow;
+    } catch (e, st) {
+      // Any unexpected stuff → normalize
+      // print('Error in fetchFaq service: $e');
+      throw AppException.from(e, st);
+    }
   }
 }

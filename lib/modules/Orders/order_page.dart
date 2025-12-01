@@ -149,7 +149,11 @@ class _OrderPageState extends State<OrderPage> {
           const SizedBox(height: 16),
           const Text(
             'No orders found',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.amber,
+            ),
           ),
           const SizedBox(height: 10),
           const Text(
@@ -157,20 +161,20 @@ class _OrderPageState extends State<OrderPage> {
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.black54),
           ),
-          const SizedBox(height: 25),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.shopping_cart_checkout),
-            label: const Text('Order a new package'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepOrange,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () => Get.toNamed('/index', arguments: {'tab': 2}),
-          ),
+          // const SizedBox(height: 25),
+          // ElevatedButton.icon(
+          //   icon: const Icon(Icons.shopping_cart_checkout),
+          //   label: const Text('Order a new package'),
+          //   style: ElevatedButton.styleFrom(
+          //     backgroundColor: Colors.deepOrange,
+          //     foregroundColor: Colors.white,
+          //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          //     shape: RoundedRectangleBorder(
+          //       borderRadius: BorderRadius.circular(12),
+          //     ),
+          //   ),
+          //   onPressed: () => Get.toNamed('/index', arguments: {'tab': 2}),
+          // ),
         ],
       ),
     ),
@@ -390,17 +394,21 @@ class _OrderPageState extends State<OrderPage> {
       paid = (result == true);
     }
 
-    // 4) If paid => call markOrderPaid (THIS was missing)
+    // 4) If paid => call markOrderPaid via notify API
     if (paid) {
-      await _controller.markOrderPaid(userId: _userId!, orderId: order.id);
+      await _controller.markOrderPaid(
+        userId: _userId!,
+        orderId: order.id,
+        transactionId: init.transactionId.toString(),
+      );
+      // Optionally reload orders if needed:
+      // await _controller.loadOrders(userId: _userId!);
 
-      //await _controller.loadOrders(userId: _userId!);
       Get.snackbar('Payment successful', 'Order marked as PAID ✅');
     } else {
       Get.snackbar('Payment cancelled', 'Payment not completed.');
     }
   }
-
   //*__________________Helpers____________________//
   bool _isSuccess(dynamic verifyOrReturnModel) {
     try {
