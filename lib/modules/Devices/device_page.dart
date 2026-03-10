@@ -1,3 +1,4 @@
+import 'package:fire_alarm/others/widgets/custom_message.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '/others/widgets/time_field.dart';
@@ -67,11 +68,9 @@ class _DevicePageState extends State<DevicePage> {
                   onRefresh: _controller.loadAll,
                   child:
                       _controller.devices.isEmpty
-                          ? const Center(
-                            child: Text(
-                              'No devices found.',
-                              style: TextStyle(color: Colors.deepOrange),
-                              ))
+                          ? CustomMessage(
+                            message:  'No devices found.', 
+                            icon: '⚠️')
                           : ListView.builder(
                             padding: const EdgeInsets.all(12),
                             itemCount: _controller.devices.length,
@@ -85,9 +84,9 @@ class _DevicePageState extends State<DevicePage> {
                   onRefresh: _controller.loadTree,
                   child:
                       _controller.tree.isEmpty
-                          ? const Center(
-                            child: Text('No device tree available.'),
-                          )
+                          ? CustomMessage(
+                            message: 'No Device Tree found.', 
+                            icon: '⚠️')
                           : ListView.builder(
                             padding: const EdgeInsets.all(12),
                             itemCount: _controller.tree.length,

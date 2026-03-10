@@ -1,5 +1,5 @@
 class AppErrorMessages {
-  // Generic / default messages
+  // Generic messages
   static const network =
       'Network error. Please check your internet connection.';
   static const timeout =
@@ -16,10 +16,13 @@ class AppErrorMessages {
       'You are not authorized. Please login again.';
   static const unknown =
       'Something went wrong. Please try again.';
+  static const validation =
+      'Invalid input. Please check and try again.';
 
-  // Module-specific Messages
+  // faq messages
   static const faqNotFound = 'FAQ not found.';
   static const faqEmpty = 'No FAQ available right now.';
+  // profile messages
   static const profileNotFound = 'Profile not found.';
 
   // 🔐 Auth-specific
@@ -35,7 +38,6 @@ class AppErrorMessages {
       'OTP session expired. Please start again.';
   static const authResendFailed =
       'Could not resend the OTP. Please try again.';
-
   static const authForgotInitFailed =
       'Could not start password reset. Please try again.';
   static const authForgotCompleteFailed =

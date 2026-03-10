@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class OrderModel {
   final int id;
   final int user;
@@ -12,6 +14,7 @@ class OrderModel {
   final String customerCity;
   final String customerPostCode;
   final String customerEmail;
+  final String paymentMethod;
   final String orderStatus;
   final String gatewayTransactionId;
   final dynamic gatewayResponse;
@@ -34,6 +37,7 @@ class OrderModel {
     required this.customerCity,
     required this.customerPostCode,
     required this.customerEmail,
+    required this.paymentMethod,
     required this.orderStatus,
     required this.gatewayTransactionId,
     required this.gatewayResponse,
@@ -43,26 +47,54 @@ class OrderModel {
     required this.orderedAt,
   });
 
-  factory OrderModel.fromJson(Map<String, dynamic> json) => OrderModel(
-        id: json['id'],
-        user: json['user'],
-        packageId: json['package'],
-        quantity: json['quantity'],
-        amount: json['amount'],
-        currency: json['currency'],
-        reference: json['reference'].toString(),
-        customerName: json['customer_name'],
-        customerAddress: json['customer_address'],
-        customerPhone: json['customer_phone'],
-        customerCity: json['customer_city'],
-        customerPostCode: json['customer_post_code'],
-        customerEmail: json['customer_email'],
-        orderStatus: json['order_status'],
-        gatewayTransactionId: json['gateway_transaction_id'] ?? '',
-        gatewayResponse: json['gateway_response'],
-        shippingAddress: json['shipping_address'],
-        numberOfMasterDevices: json['number_of_master_devices'] ?? 0,
-        numberOfSlaveDevices: json['number_of_slave_devices'] ?? 0,
-        orderedAt: DateTime.parse(json['ordered_at']),
-      );
+  factory OrderModel.fromJson(Map<String, dynamic> json) {
+    debugPrint('🧾 OrderModel.fromJson input: $json');
+
+    // package can now be either:
+    // - an int (legacy API)
+    // - a map { id: ..., name: ... } (current API)
+    final pkg = json['package'];
+    int resolvedPackageId;
+
+    if (pkg is int) {
+      resolvedPackageId = pkg;
+    } else if (pkg is Map<String, dynamic>) {
+      resolvedPackageId = (pkg['id'] as num?)?.toInt() ?? 0;
+      debugPrint('📦 Parsed package as object, id=$resolvedPackageId, name=${pkg['name']}');
+    } else {
+      debugPrint('⚠️ Unexpected package type: ${pkg.runtimeType}, value=$pkg');
+      resolvedPackageId = 0; // fallback so app doesn’t crash
+    }
+
+    final orderedAtStr = json['ordered_at']?.toString();
+    final parsedOrderedAt =
+        orderedAtStr != null ? DateTime.tryParse(orderedAtStr) : null;
+
+    return OrderModel(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      user: (json['user'] as num?)?.toInt() ?? 0,
+      packageId: resolvedPackageId,
+      quantity: (json['quantity'] as num?)?.toInt() ?? 0,
+      amount: json['amount']?.toString() ?? '0.00',
+      currency: json['currency']?.toString() ?? 'BDT',
+      reference: json['reference']?.toString() ?? '',
+      customerName: json['customer_name']?.toString() ?? '',
+      customerAddress: json['customer_address']?.toString() ?? '',
+      customerPhone: json['customer_phone']?.toString() ?? '',
+      customerCity: json['customer_city']?.toString() ?? '',
+      customerPostCode: json['customer_post_code']?.toString() ?? '',
+      customerEmail: json['customer_email']?.toString() ?? '',
+      paymentMethod: (json['payment_method'] ?? 'online').toString(),
+      orderStatus: json['order_status']?.toString() ?? '',
+      gatewayTransactionId:
+          json['gateway_transaction_id']?.toString() ?? '',
+      gatewayResponse: json['gateway_response'],
+      shippingAddress: json['shipping_address']?.toString() ?? '',
+      numberOfMasterDevices:
+          (json['number_of_master_devices'] as num?)?.toInt() ?? 0,
+      numberOfSlaveDevices:
+          (json['number_of_slave_devices'] as num?)?.toInt() ?? 0,
+      orderedAt: parsedOrderedAt ?? DateTime.now(),
+    );
+  }
 }

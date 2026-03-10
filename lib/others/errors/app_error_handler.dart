@@ -1,12 +1,9 @@
-// app_error_handler.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
-import 'app_error_messages.dart'; // your separate messages file
+import 'app_error_messages.dart';
 
 // --------------------------------------------------
 // 1) Error types + AppException
@@ -21,6 +18,7 @@ enum AppErrorType {
   parsing,
   unauthorized,
   unknown,
+  validation,
 }
 
 class AppException implements Exception {
@@ -66,6 +64,8 @@ class AppException implements Exception {
         return AppErrorMessages.unauthorized;
       case AppErrorType.unknown:
         return AppErrorMessages.unknown;
+      case AppErrorType.validation:
+        return AppErrorMessages.validation;
     }
   }
 

@@ -1,10 +1,11 @@
-import 'package:fire_alarm/others/theme/app_theme.dart';
-import 'package:fire_alarm/others/widgets/time_field.dart';
+import '/others/theme/app_theme.dart';
+import '/others/widgets/custom_message.dart';
+import '/others/widgets/time_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'alert_controller.dart';
 import 'alert_model.dart';
-import 'package:fire_alarm/others/utils/api.dart';
+import '/others/utils/api.dart';
 import '/modules/firebase/push_notification_service.dart';
 
 class AlertPage extends StatefulWidget {
@@ -23,10 +24,12 @@ class _AlertPageState extends State<AlertPage> {
     super.initState();
 
     // ✅ Initialize Push Notification listener (if not already)
+    debugPrint('[AlertPage] initState → PushNotificationService.initialize()');
     PushNotificationService.initialize();
 
     // ✅ Load alerts initially
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint('[AlertPage] Post-frame → controller.loadAlerts()');
       controller.loadAlerts(apiUrl: apiUrl);
     });
   }
@@ -39,6 +42,9 @@ class _AlertPageState extends State<AlertPage> {
         backgroundColor: AppTheme().secondaryColor,
       ),
       body: Obx(() {
+        debugPrint(
+            '[AlertPage] Obx rebuilt. isLoading=${controller.isLoading.value}, alerts=${controller.alerts.length}, error="${controller.error.value}"');
+
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -48,22 +54,21 @@ class _AlertPageState extends State<AlertPage> {
         }
 
         if (controller.alerts.isEmpty) {
-          return const Center(
-            child: Text( 
-              'No alerts found.',
-              style: TextStyle(color: Colors.deepOrange),
-            )
-          );
+          return const CustomMessage(message: 'No alerts found.', icon: '⚠️');
         }
 
         return RefreshIndicator(
-          onRefresh: () => controller.loadAlerts(apiUrl: apiUrl),
+          onRefresh: () {
+            debugPrint('[AlertPage] onRefresh → controller.loadAlerts()');
+            return controller.loadAlerts(apiUrl: apiUrl);
+          },
           child: ListView.builder(
             itemCount: controller.alerts.length,
             itemBuilder: (context, index) {
               final AlertModel alert = controller.alerts[index];
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                margin:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 elevation: 2,
                 child: ListTile(
                   leading: const Icon(
@@ -81,17 +86,19 @@ class _AlertPageState extends State<AlertPage> {
                       const SizedBox(height: 4),
                       TimeField(
                         label: 'Triggered',
-                        // if triggeredAt is DateTime?
                         raw: alert.triggeredAt.toIso8601String(),
-                        // if it's already a String from API, use: raw: alert.triggeredAt,
                         icon: Icons.schedule,
-                        localeTag: 'en_US', // or 'bn_BD'
+                        localeTag: 'en_US',
                         fallback: '—',
                       ),
                     ],
                   ),
                   trailing: const Icon(Icons.info_outline, size: 20),
-                  onTap: () => _showAlertDetailsDialog(context, alert),
+                  onTap: () {
+                    debugPrint(
+                        '[AlertPage] ListTile tapped → alertId=${alert.id}');
+                    _showAlertDetailsDialog(context, alert);
+                  },
                 ),
               );
             },
@@ -103,6 +110,7 @@ class _AlertPageState extends State<AlertPage> {
 
   //*--------- Show alert details dialog ---------*
   void _showAlertDetailsDialog(BuildContext context, AlertModel alert) {
+    debugPrint('[AlertPage] _showAlertDetailsDialog → alertId=${alert.id}');
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -143,7 +151,8 @@ class _AlertPageState extends State<AlertPage> {
                 ),
                 _buildDetailRow('Alert Type', alert.alertType),
                 _buildDetailRow('Status', alert.status),
-                //_____________Tiggered At and Resolved At using TimeField_____________
+
+                // Triggered / Resolved with null-safe handling
                 TimeField(
                   label: 'Triggered At',
                   raw: alert.triggeredAt.toIso8601String(),
@@ -153,12 +162,14 @@ class _AlertPageState extends State<AlertPage> {
                 ),
                 TimeField(
                   label: 'Resolved At',
-                  raw: alert.resolvedAt!.toIso8601String(),              
+                  raw: alert.resolvedAt != null
+                      ? alert.resolvedAt!.toIso8601String()
+                      : '',
                   icon: Icons.check_circle_outline,
                   localeTag: 'en_US',
                   fallback: 'Pending',
                 ),
-                //_________________________________________________________
+
                 _buildDetailRow('Owner ID', alert.ownerId.toString()),
                 _buildDetailRow('Owner Email', alert.ownerEmail),
                 _buildDetailRow(
@@ -169,7 +180,11 @@ class _AlertPageState extends State<AlertPage> {
                 Align(
                   alignment: Alignment.center,
                   child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      debugPrint(
+                          '[AlertPage] Details dialog Close pressed → alertId=${alert.id}');
+                      Navigator.pop(context);
+                    },
                     icon: const Icon(Icons.close),
                     label: const Text('Close'),
                     style: ElevatedButton.styleFrom(
@@ -212,7 +227,8 @@ class _AlertPageState extends State<AlertPage> {
           ),
           Expanded(
             flex: 5,
-            child: Text(value, style: const TextStyle(color: Colors.black54)),
+            child:
+                Text(value, style: const TextStyle(color: Colors.black54)),
           ),
         ],
       ),

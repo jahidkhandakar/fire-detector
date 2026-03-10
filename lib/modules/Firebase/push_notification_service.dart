@@ -6,25 +6,26 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import '/others/utils/api.dart';
-import '/others/widgets/alarm_service.dart';              // ensureAlarm()
-import '/others/widgets/custom_dialog.dart' as ui;       // showSilenceAlarmDialog / showResolveDialog
-import '/modules/firebase/message.dart';                 // AppMessages, FirebaseMessage
+import '/others/widgets/alarm_service.dart';
+import '/others/widgets/custom_dialog.dart'
+    as ui; // showSilenceAlarmDialog / showResolveDialog
+import '/modules/firebase/message.dart'; // AppMessages, FirebaseMessage
 //import '/others/widgets/custom_snackbar.dart';
-
 
 class PushNotificationService {
   // ─────────────────────────────────────────────────────────────────────────────
   // storage keys (for backend device row id + last token)
   // ─────────────────────────────────────────────────────────────────────────────
   static const String _kStoredFcmDeviceIdKey = 'fcm_device_id';
-  static const String _kStoredFcmTokenKey    = 'fcm_registration_token';
+  static const String _kStoredFcmTokenKey = 'fcm_registration_token';
 
   // one-time init guard
   static bool _initialized = false;
 
   // firebase + local notif clients
   static final FirebaseMessaging _fcm = FirebaseMessaging.instance;
-  static final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin _local =
+      FlutterLocalNotificationsPlugin();
   static final http.Client _http = http.Client();
 
   // de-dupe recent alerts (tray/snackbar spam)
@@ -53,7 +54,9 @@ class PushNotificationService {
     // 1) Permissions
     await _fcm.requestPermission(alert: true, badge: true, sound: true);
     await _fcm.setForegroundNotificationPresentationOptions(
-      alert: true, badge: true, sound: true,
+      alert: true,
+      badge: true,
+      sound: true,
     );
 
     // 2) Local notifications init
@@ -80,7 +83,8 @@ class PushNotificationService {
 
     // 3) Create BOTH channels (Android 8+)
     final androidImpl =
-        _local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        _local.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
 
     // Loud channel (with siren)
     await androidImpl?.createNotificationChannel(
@@ -118,7 +122,7 @@ class PushNotificationService {
     FirebaseMessaging.onMessage.listen((RemoteMessage rm) async {
       final msg = FirebaseMessage.fromRemoteMessage(rm);
 
-      // Only suppress snackbar/tray for duplicates, not the dialog
+      // ── de-dupe (for snackbar / tray) ────────────────────────────────────────
       _recentKeys.removeWhere((_, exp) => DateTime.now().isAfter(exp));
       final key = msg.dedupeKey.trim();
       bool isDuplicateWithinTtl = false;
@@ -132,63 +136,76 @@ class PushNotificationService {
 
       final isLoggedIn = _isLoggedIn();
 
-      // Heads-up snackbar only if we have text and it's not a duplicate
+      // Safe title/body for snackbar + notifs
+      final String snackTitle =
+          msg.title ?? msg.body ?? AppMessages.dialogTitleFallback;
+      final String snackBody =
+          msg.body ?? msg.title ?? AppMessages.dialogContentFallback;
+
+      // ── heads-up snackbar (Flutter default, no GetX snackbar) ───────────────
       if (msg.hasExplicitText && !isDuplicateWithinTtl) {
-        if (Get.isSnackbarOpen) Get.closeCurrentSnackbar();
-        Get.snackbar(
-          msg.title!, msg.body!,
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.redAccent,
-          colorText: Colors.white,
-          icon: const Icon(Icons.warning_amber_rounded, color: Colors.white),
-          duration: const Duration(seconds: AppMessages.snackbarDurationSeconds),
-        );
+        _showHeadUpSnackbar(snackTitle, snackBody);
       }
 
-      // Foreground active alert: show Acknowledge dialog once per alert
-      if (isLoggedIn && msg.isActive) {
+      // ── decide if we want the in-app dialog ─────────────────────────────────
+      final bool shouldShowDialog = isLoggedIn && msg.isActive;
+
+      if (shouldShowDialog) {
         final ackKey = _ackKeyFor(msg);
         if (_ackDialogShown.contains(ackKey)) return;
-
         _ackDialogShown.add(ackKey);
-        try {
-          await ensureAlarm().start(); // ring + vibrate
 
-          // Silent tray (visual cue) only if we have text and not duplicate
-          if (msg.hasExplicitText && !isDuplicateWithinTtl) {
+        // 1) Start alarm – never let this block the dialog
+        try {
+          await ensureAlarm().start();
+        } catch (e) {
+          debugPrint('⚠️ ensureAlarm.start() error: $e');
+        }
+
+        // 2) Optional silent tray (visual cue) in foreground
+        if (msg.hasExplicitText && !isDuplicateWithinTtl) {
+          try {
             await _showLocalNotification(
-              title: msg.title ?? '',
-              body: msg.body ?? '',
+              title: snackTitle,
+              body: snackBody,
               data: msg.data,
               channelId: AppMessages.silentChannelId,
               channelName: AppMessages.silentChannelName,
               iosPlaySound: false,
             );
+          } catch (e) {
+            debugPrint('⚠️ _showLocalNotification (silent) error: $e');
           }
+        }
 
-          // Give overlay a moment to mount
-          await Future.delayed(const Duration(milliseconds: 120));
-
+        // 3) Finally the dialog itself
+        await Future.delayed(const Duration(milliseconds: 120));
+        try {
           await ui.showSilenceAlarmDialog(
             title: msg.title ?? AppMessages.dialogTitleFallback,
-            body:  msg.body  ?? AppMessages.dialogContentFallback,
+            body: msg.body ?? AppMessages.dialogContentFallback,
             alertId: msg.alertId > 0 ? msg.alertId : null,
           );
-        } catch (_) {
-          // If dialog failed to show, allow a retry on next event
+        } catch (e) {
+          debugPrint('⚠️ showSilenceAlarmDialog error: $e');
+          // allow retry on next event
           _ackDialogShown.remove(ackKey);
         }
       } else {
-        // Not logged in or already resolved → loud tray only if text and not duplicate
+        // Not logged in or already resolved → loud tray only
         if (msg.hasExplicitText && !isDuplicateWithinTtl) {
-          await _showLocalNotification(
-            title: msg.title ?? '',
-            body: msg.body ?? '',
-            data: msg.data,
-            channelId: AppMessages.loudChannelId,
-            channelName: AppMessages.loudChannelName,
-            iosPlaySound: true,
-          );
+          try {
+            await _showLocalNotification(
+              title: snackTitle,
+              body: snackBody,
+              data: msg.data,
+              channelId: AppMessages.loudChannelId,
+              channelName: AppMessages.loudChannelName,
+              iosPlaySound: true,
+            );
+          } catch (e) {
+            debugPrint('⚠️ _showLocalNotification (loud) error: $e');
+          }
         }
       }
     });
@@ -239,7 +256,9 @@ class PushNotificationService {
       }
 
       // nuke local FCM token so next login re-registers cleanly
-      try { await _fcm.deleteToken(); } catch (_) {}
+      try {
+        await _fcm.deleteToken();
+      } catch (_) {}
 
       // clear in-app state
       _ackDialogShown.clear();
@@ -257,6 +276,53 @@ class PushNotificationService {
   // ─────────────────────────────────────────────────────────────────────────────
   // INTERNALS
   // ─────────────────────────────────────────────────────────────────────────────
+
+  // Flutter default snackbar (no GetX snackbar)
+  static void _showHeadUpSnackbar(String title, String body) {
+    final ctx = Get.overlayContext ?? Get.context;
+    if (ctx == null) return;
+
+    final messenger = ScaffoldMessenger.maybeOf(ctx);
+    if (messenger == null) return;
+
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.redAccent,
+        duration:
+            const Duration(seconds: AppMessages.snackbarDurationSeconds),
+        content: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    body,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   static Map<String, String> _authHeaders() {
     final box = GetStorage();
     final token = box.read<String>('access');
@@ -282,7 +348,7 @@ class PushNotificationService {
       if (res.statusCode == 200 || res.statusCode == 201) {
         try {
           final map = jsonDecode(res.body) as Map<String, dynamic>;
-          final id  = map['id'];
+          final id = map['id'];
           if (id is int) _storeFcmDeviceId(id);
         } catch (_) {}
         _storeToken(token);
@@ -295,7 +361,7 @@ class PushNotificationService {
         if (put.statusCode >= 200 && put.statusCode < 300) {
           try {
             final map = jsonDecode(put.body) as Map<String, dynamic>;
-            final id  = map['id'];
+            final id = map['id'];
             if (id is int) _storeFcmDeviceId(id);
           } catch (_) {}
           _storeToken(token);
@@ -335,7 +401,10 @@ class PushNotificationService {
       presentSound: iosPlaySound,
     );
 
-    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
 
     await _local.show(
       DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -376,7 +445,7 @@ class PushNotificationService {
             await ensureAlarm().start();
             await ui.showSilenceAlarmDialog(
               title: msg.title ?? AppMessages.dialogTitleFallback,
-              body:  msg.body  ?? AppMessages.dialogContentFallback,
+              body: msg.body ?? AppMessages.dialogContentFallback,
               alertId: msg.alertId > 0 ? msg.alertId : null,
             );
           } catch (_) {
@@ -434,8 +503,9 @@ class PushNotificationService {
   /// Only if your API supports query by token. If not, this will just return null.
   static Future<int?> _lookupDeviceIdByToken(String token) async {
     try {
-      final uri = Uri.parse('${Api.baseUrl}/api/fcm/devices/')
-          .replace(queryParameters: {'registration_token': token});
+      final uri = Uri.parse(
+        '${Api.baseUrl}/api/fcm/devices/',
+      ).replace(queryParameters: {'registration_token': token});
       final res = await _http.get(uri, headers: _authHeaders());
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body);
@@ -457,7 +527,8 @@ class PushNotificationService {
 
 // ================== BACKGROUND HANDLER (top-level) ==================
 
-final FlutterLocalNotificationsPlugin _bgLocal = FlutterLocalNotificationsPlugin();
+final FlutterLocalNotificationsPlugin _bgLocal =
+    FlutterLocalNotificationsPlugin();
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -503,9 +574,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Use data-only text; if missing, pass a single space to avoid fallback strings,
   // while still allowing the loud channel to play the siren.
   final String? rawTitle = (data['title'] as String?)?.trim();
-  final String? rawBody  = (data['body']  as String?)?.trim();
-  final String safeTitle = (rawTitle != null && rawTitle.isNotEmpty) ? rawTitle : ' ';
-  final String safeBody  = (rawBody  != null && rawBody .isNotEmpty) ? rawBody  : ' ';
+  final String? rawBody = (data['body'] as String?)?.trim();
+  final String safeTitle =
+      (rawTitle != null && rawTitle.isNotEmpty) ? rawTitle : ' ';
+  final String safeBody =
+      (rawBody != null && rawBody.isNotEmpty) ? rawBody : ' ';
 
   await _bgLocal.show(
     DateTime.now().millisecondsSinceEpoch ~/ 1000,

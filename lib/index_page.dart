@@ -1,6 +1,8 @@
 import '/modules/devices/device_page.dart';
 import '/modules/packages/package_page.dart';
 import '/modules/users/user_page.dart';
+import '/modules/cart/cart_page.dart';
+import '/modules/cart/cart_controller.dart';
 import '/screens/history_screen.dart';
 import '/screens/home_screen.dart';
 import '/others/widgets/bottom_nav_bar.dart';
@@ -17,6 +19,8 @@ class IndexPage extends StatefulWidget {
 
 class _IndexPageState extends State<IndexPage> {
   int _currentIndex = 0;
+
+  late final CartController _cartCtrl;
 
   final List<Widget> _pages = const [
     HomeScreen(),
@@ -38,18 +42,61 @@ class _IndexPageState extends State<IndexPage> {
   void initState() {
     super.initState();
 
-    // 🔥 Read tab index from GetX arguments
+    _cartCtrl = Get.isRegistered<CartController>()
+        ? Get.find<CartController>()
+        : Get.put(CartController(), permanent: true);
+
+    // initial tab via arguments
     final args = Get.arguments;
     if (args is Map && args['tab'] is int) {
       final newIndex = args['tab'] as int;
       if (newIndex >= 0 && newIndex < _pages.length) {
-        _currentIndex = newIndex; // no setState needed in initState
+        _currentIndex = newIndex;
       }
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cartCtrl.loadCart();
+    });
   }
 
   void _onTabSelected(int index) {
     setState(() => _currentIndex = index);
+  }
+
+  Widget _buildCartIcon() {
+    return Obx(() {
+      final count = _cartCtrl.itemCount;
+      return Stack(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.shopping_cart_outlined),
+            onPressed: () => Get.to(() => const CartPage()),
+          ),
+          if (count > 0)
+            Positioned(
+              right: 6,
+              top: 6,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  count > 99 ? '99+' : count.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    });
   }
 
   @override
@@ -60,24 +107,26 @@ class _IndexPageState extends State<IndexPage> {
         appBar: AppBar(
           title: Text(_titles[_currentIndex]),
           centerTitle: true,
-          bottom:
-              _currentIndex == 1
-                  ? const TabBar(
-                    labelColor: Color.fromARGB(255, 22, 243, 29),
-                    unselectedLabelColor: Colors.white,
-                    indicatorColor: Colors.white,
-                    tabs: [
-                      Tab(
-                        icon: Icon(Icons.list, color: Colors.white),
-                        text: 'All Devices',
-                      ),
-                      Tab(
-                        icon: Icon(Icons.account_tree, color: Colors.white),
-                        text: 'Device Tree',
-                      ),
-                    ],
-                  )
-                  : null,
+          actions: [
+            _buildCartIcon(),
+          ],
+          bottom: _currentIndex == 1
+              ? const TabBar(
+                  labelColor: Color.fromARGB(255, 22, 243, 29),
+                  unselectedLabelColor: Colors.white,
+                  indicatorColor: Colors.white,
+                  tabs: [
+                    Tab(
+                      icon: Icon(Icons.list, color: Colors.white),
+                      text: 'All Devices',
+                    ),
+                    Tab(
+                      icon: Icon(Icons.account_tree, color: Colors.white),
+                      text: 'Device Tree',
+                    ),
+                  ],
+                )
+              : null,
         ),
         drawer: CustomDrawer(
           onTabSelected: (index) {

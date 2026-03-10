@@ -49,5 +49,10 @@ class Api {
   //FAQ
   static const String faq = '$baseUrl/content/faq/';
 
+  //CART
+  static const String cart = '$baseUrl/cart/';
+  static const String cartCheckout = '$baseUrl/cart/checkout/';
+  static const String cartItems = '$baseUrl/cart/items/';
+  
 
 }

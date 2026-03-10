@@ -1,8 +1,10 @@
-import 'package:fire_alarm/others/errors/app_error_handler.dart';
+import 'package:flutter/material.dart';
+import '/others/errors/app_error_handler.dart';
 import 'package:get/get.dart';
 import 'alert_model.dart';
 import 'alert_service.dart';
-import 'package:fire_alarm/others/utils/api.dart';
+import '/others/utils/api.dart';
+
 
 class AlertController extends GetxController {
   final AlertService _service = AlertService();
@@ -13,29 +15,35 @@ class AlertController extends GetxController {
 
   //*------------------- 🔹 Fetch all alerts -------------------
   Future<void> loadAlerts({required String apiUrl}) async {
+    debugPrint('[AlertController] loadAlerts called. apiUrl=$apiUrl');
     try {
       isLoading(true);
       error('');
 
       final data = await _service.fetchAlerts(apiUrl: apiUrl);
+      debugPrint(
+          '[AlertController] loadAlerts success. received ${data.length} alerts.');
       alerts.assignAll(data);
     } on AppException catch (ex, st) {
-      // user-facing message from central messages file
       error(ex.toUserMessage());
-      print('Error fetching alerts (AppException): $ex');
+      debugPrint(
+          '[AlertController] Error fetching alerts (AppException): $ex');
       AppErrorHandler.handle(ex, stackTrace: st);
     } catch (e, st) {
-      // any unexpected errors
       error('Failed to load alerts.');
-      print('Error fetching alerts (unknown): $e');
+      debugPrint('[AlertController] Error fetching alerts (unknown): $e');
       AppErrorHandler.handle(e, stackTrace: st);
     } finally {
       isLoading(false);
+      debugPrint(
+          '[AlertController] loadAlerts finished. isLoading=${isLoading.value}, error="$error"');
     }
   }
 
   //*---------------🔹 Fetch alerts for a specific device------------
   Future<void> loadAlertsByDevice(int deviceId) async {
+    debugPrint(
+        '[AlertController] loadAlertsByDevice called. deviceId=$deviceId');
     try {
       isLoading(true);
       error('');
@@ -44,89 +52,116 @@ class AlertController extends GetxController {
         baseUrl: Api.baseUrl,
         deviceId: deviceId,
       );
+      debugPrint(
+          '[AlertController] loadAlertsByDevice success. deviceId=$deviceId, alerts=${data.length}');
       alerts.assignAll(data);
     } on AppException catch (ex, st) {
       error(ex.toUserMessage());
-      print('Error fetching device alerts (AppException): $ex');
+      debugPrint(
+          '[AlertController] Error fetching device alerts (AppException): $ex');
       AppErrorHandler.handle(ex, stackTrace: st);
     } catch (e, st) {
       error('Failed to load device alerts.');
-      print('Error fetching device alerts (unknown): $e');
+      debugPrint(
+          '[AlertController] Error fetching device alerts (unknown): $e');
       AppErrorHandler.handle(e, stackTrace: st);
     } finally {
       isLoading(false);
+      debugPrint(
+          '[AlertController] loadAlertsByDevice finished. deviceId=$deviceId, isLoading=${isLoading.value}, error="$error"');
     }
   }
 
   //*---------- 🔹 Resolve alert and update status locally------------
   Future<void> resolveAlert(int alertId) async {
+    debugPrint('[AlertController] resolveAlert called. alertId=$alertId');
     try {
       final success = await _service.resolveAlert(
         baseUrl: Api.baseUrl,
         alertId: alertId,
       );
+      debugPrint(
+          '[AlertController] resolveAlert service call returned success=$success');
 
       if (success) {
         final index = alerts.indexWhere((a) => a.id == alertId);
+        debugPrint(
+            '[AlertController] resolveAlert local index for alertId=$alertId → $index');
+
         if (index != -1) {
+          final old = alerts[index];
           alerts[index] = AlertModel(
-            id: alerts[index].id,
-            device: alerts[index].device,
-            deviceHardwareIdentifier: alerts[index].deviceHardwareIdentifier,
-            alertType: alerts[index].alertType,
+            id: old.id,
+            device: old.device,
+            deviceHardwareIdentifier: old.deviceHardwareIdentifier,
+            alertType: old.alertType,
             status: 'resolved', // updated
-            triggeredAt: alerts[index].triggeredAt,
+            triggeredAt: old.triggeredAt,
             resolvedAt: DateTime.now(),
-            ownerId: alerts[index].ownerId,
-            ownerEmail: alerts[index].ownerEmail,
-            ownerPhone: alerts[index].ownerPhone,
+            ownerId: old.ownerId,
+            ownerEmail: old.ownerEmail,
+            ownerPhone: old.ownerPhone,
           );
           alerts.refresh();
+          debugPrint(
+              '[AlertController] resolveAlert updated local alert to resolved. alertId=$alertId');
         }
       }
     } on AppException catch (ex, st) {
       error(ex.toUserMessage());
-      print('Error resolving alert (AppException): $ex');
+      debugPrint(
+          '[AlertController] Error resolving alert (AppException): $ex');
       AppErrorHandler.handle(ex, stackTrace: st);
     } catch (e, st) {
       error('Failed to resolve alert.');
-      print('Error resolving alert (unknown): $e');
+      debugPrint('[AlertController] Error resolving alert (unknown): $e');
       AppErrorHandler.handle(e, stackTrace: st);
     }
   }
 
   //*-------- 🔹 Acknowledge alert and update status locally----------
   Future<void> acknowledgeAlert(int alertId) async {
+    debugPrint('[AlertController] acknowledgeAlert called. alertId=$alertId');
     try {
       final success = await _service.acknowledgeAlert(
         baseUrl: Api.baseUrl,
         alertId: alertId,
       );
+      debugPrint(
+          '[AlertController] acknowledgeAlert service call returned success=$success');
+
       if (success) {
         final index = alerts.indexWhere((a) => a.id == alertId);
+        debugPrint(
+            '[AlertController] acknowledgeAlert local index for alertId=$alertId → $index');
+
         if (index != -1) {
+          final old = alerts[index];
           alerts[index] = AlertModel(
-            id: alerts[index].id,
-            device: alerts[index].device,
-            deviceHardwareIdentifier: alerts[index].deviceHardwareIdentifier,
-            alertType: alerts[index].alertType,
-            status: 'Open', // No change in status on acknowledge
-            triggeredAt: alerts[index].triggeredAt,
-            resolvedAt: alerts[index].resolvedAt,
-            ownerId: alerts[index].ownerId,
-            ownerEmail: alerts[index].ownerEmail,
-            ownerPhone: alerts[index].ownerPhone,
+            id: old.id,
+            device: old.device,
+            deviceHardwareIdentifier: old.deviceHardwareIdentifier,
+            alertType: old.alertType,
+            status: 'Open', // No change in status on acknowledge (backend semantic)
+            triggeredAt: old.triggeredAt,
+            resolvedAt: old.resolvedAt,
+            ownerId: old.ownerId,
+            ownerEmail: old.ownerEmail,
+            ownerPhone: old.ownerPhone,
           );
           alerts.refresh();
+          debugPrint(
+              '[AlertController] acknowledgeAlert updated local alert. alertId=$alertId');
         }
       }
     } on AppException catch (ex, st) {
       error(ex.toUserMessage());
-      print('Error acknowledging alert (AppException): $ex');
+      debugPrint(
+          '[AlertController] Error acknowledging alert (AppException): $ex');
       AppErrorHandler.handle(ex, stackTrace: st);
     } catch (e, st) {
       error('Failed to acknowledge alert.');
-      print('Error acknowledging alert (unknown): $e');
+      debugPrint('[AlertController] Error acknowledging alert (unknown): $e');
       AppErrorHandler.handle(e, stackTrace: st);
     }
   }
