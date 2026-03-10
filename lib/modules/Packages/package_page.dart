@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import '/modules/shurjopay/shurjopay_controller.dart';
-import '/others/widgets/package_selector.dart';
-import '/others/utils/api.dart';
 import '/modules/packages/package_controller.dart';
 import '/modules/packages/package_model.dart';
 import '/modules/users/user_controller.dart';
-import '/modules/users/user_model.dart';
-import '/modules/orders/order_controller.dart';
-import '/modules/orders/order_model.dart';
-import 'package:get_storage/get_storage.dart';
+import '/modules/cart/cart_controller.dart';
+import '/others/utils/api.dart';
+import '/others/widgets/package_selector.dart';
 
 class PackagePage extends StatefulWidget {
   const PackagePage({super.key});
@@ -21,11 +17,10 @@ class PackagePage extends StatefulWidget {
 
 class _PackagePageState extends State<PackagePage> {
   final PackageController _pkgCtrl = Get.put(PackageController());
-  final OrderController _orderCtrl = Get.put(
-    OrderController(),
-    permanent: true,
-  );
-  final UserController _userCtrl = Get.put(UserController(), permanent: true);
+  final UserController _userCtrl =
+      Get.put(UserController(), permanent: true);
+
+  late final CartController _cartCtrl;
 
   final String apiUrl = Api.packages;
   final _currency = NumberFormat.currency(locale: 'en_BD', symbol: '৳');
@@ -36,6 +31,11 @@ class _PackagePageState extends State<PackagePage> {
   @override
   void initState() {
     super.initState();
+
+    _cartCtrl = Get.isRegistered<CartController>()
+        ? Get.find<CartController>()
+        : Get.put(CartController(), permanent: true);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_pkgCtrl.packages.isEmpty && !_pkgCtrl.isLoading.value) {
         _pkgCtrl.loadPackages(apiUrl: apiUrl);
@@ -77,7 +77,6 @@ class _PackagePageState extends State<PackagePage> {
 
   Widget _buildPackageCard(PackageModel pkg, {required bool isStandalone}) {
     final masters = masterQtyByPackage[pkg.id] ?? pkg.minQuantity;
-    // 👇 Stand-Alone → no slaves, always 0
     final slaves =
         isStandalone ? 0 : (slaveQtyByPackage[pkg.id] ?? pkg.minQuantity);
 
@@ -99,7 +98,9 @@ class _PackagePageState extends State<PackagePage> {
               children: [
                 Expanded(
                   child: Text(
-                    _titleCase(pkg.name.isEmpty ? 'Unnamed Package' : pkg.name),
+                    _titleCase(
+                      pkg.name.isEmpty ? 'Unnamed Package' : pkg.name,
+                    ),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -158,8 +159,8 @@ class _PackagePageState extends State<PackagePage> {
                       min: pkg.minQuantity,
                       max: pkg.maxQuantity,
                       initial: masters,
-                      onChanged:
-                          (v) => setState(() => masterQtyByPackage[pkg.id] = v),
+                      onChanged: (v) =>
+                          setState(() => masterQtyByPackage[pkg.id] = v),
                     ),
                   ],
                 ),
@@ -181,9 +182,8 @@ class _PackagePageState extends State<PackagePage> {
                         min: pkg.minQuantity,
                         max: pkg.maxQuantity,
                         initial: slaves,
-                        onChanged:
-                            (v) =>
-                                setState(() => slaveQtyByPackage[pkg.id] = v),
+                        onChanged: (v) =>
+                            setState(() => slaveQtyByPackage[pkg.id] = v),
                       ),
                     ],
                   ),
@@ -206,7 +206,8 @@ class _PackagePageState extends State<PackagePage> {
             const SizedBox(height: 8),
             Center(
               child: Text(
-                'First month MRF (masters only): ${firstMonthMrf == 0 ? "—" : _currency.format(firstMonthMrf)}',
+                'First month MRF (masters only): '
+                '${firstMonthMrf == 0 ? "—" : _currency.format(firstMonthMrf)}',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   color: Colors.grey[800],
@@ -238,15 +239,14 @@ class _PackagePageState extends State<PackagePage> {
                 ),
                 const SizedBox(width: 8),
                 FilledButton.icon(
-                  onPressed:
-                      () => _handleSelect(
-                        pkg,
-                        masters,
-                        isStandalone ? 0 : slaves,
-                        totalNow,
-                      ),
-                  icon: const Icon(Icons.shopping_cart_checkout),
-                  label: const Text('Select'),
+                  onPressed: () => _handleSelect(
+                    pkg,
+                    masters,
+                    isStandalone ? 0 : slaves,
+                    totalNow,
+                  ),
+                  icon: const Icon(Icons.add_shopping_cart),
+                  label: const Text('Add to cart'),
                 ),
               ],
             ),
@@ -256,8 +256,6 @@ class _PackagePageState extends State<PackagePage> {
     );
   }
 
-  //*________________________HELPERS________________________//
-
   Future<void> _handleSelect(
     PackageModel pkg,
     int masters,
@@ -265,257 +263,53 @@ class _PackagePageState extends State<PackagePage> {
     double totalNow,
   ) async {
     if (totalNow <= 0) {
-      Get.snackbar('Payment', 'Amount must be greater than 0');
+      Get.snackbar('Cart', 'Amount must be greater than 0');
       return;
     }
 
     final userId = _userCtrl.getStoredUserId();
     if (userId == null) {
-      Get.snackbar('Order', 'Please login first');
+      Get.snackbar('Cart', 'Please login first');
       return;
     }
 
-    // pull user info (safe fallbacks)
-    final UserModel? u = _userCtrl.me.value;
+    final devices = masters + slaves;
+    if (devices <= 0) {
+      Get.snackbar('Cart', 'Select at least 1 device');
+      return;
+    }
 
-    final String? fullName = u?.fullName;
-    final String? email = u?.email;
-    final String? address = u?.address;
-    final String? phone = u?.phoneNumber;
+    debugPrint(
+      '🛒 _handleSelect pkg=${pkg.id} masters=$masters slaves=$slaves devices=$devices totalNow=$totalNow',
+    );
 
-    final String customerName =
-        (fullName != null && fullName.trim().isNotEmpty)
-            ? fullName.trim()
-            : (email != null && email.contains('@')
-                ? email.split('@').first
-                : 'Customer');
-
-    final String customerAddress =
-        (address != null && address.trim().isNotEmpty)
-            ? address.trim()
-            : 'Dhaka, Bangladesh';
-
-    final String customerPhone =
-        (phone != null && phone.trim().isNotEmpty)
-            ? phone.trim()
-            : '01700000000';
-
-    final String customerEmail =
-        (email != null && email.trim().isNotEmpty)
-            ? email.trim()
-            : 'customer@example.com';
-
-    const String customerCity = 'Dhaka';
-    const String customerPostCode = '1212';
-
-    // 1) Create Order FIRST (server source of truth) — note `package_id`
-    final int devices = masters + slaves;
-
-    final orderBody = {
-      "package_id": pkg.id, // ✅ server expects `package_id`
-      "quantity": devices,
-      "amount": totalNow.toStringAsFixed(
-        2,
-      ), // if server expects number, send `totalNow`
-      "currency": "BDT",
-      "number_of_master_devices": masters,
-      "number_of_slave_devices": slaves,
-      "customer_name": customerName,
-      "customer_address": customerAddress,
-      "customer_phone": customerPhone,
-      "customer_city": customerCity,
-      "customer_post_code": customerPostCode,
-      "customer_email": customerEmail,
-      // "shipping_address": customerAddress, // (optional)
-    };
-
-    // 🔍 Visibility for debugging
-    debugPrint('🧾 About to create order with body => $orderBody');
-    debugPrint('🔐 Access token exists? ${GetStorage().hasData("access")}');
-
-    OrderModel? created;
     try {
-      created = await _orderCtrl.createOrder(userId: userId, body: orderBody);
-    } catch (e) {
-      Get.snackbar('Order', 'Failed to create order');
-      return;
-    }
-
-    if (created == null) {
-      final errText =
-          _orderCtrl.error.value.isNotEmpty
-              ? _orderCtrl.error.value
-              : 'Failed to create order';
-      Get.snackbar('Order', errText, duration: const Duration(seconds: 4));
-      return;
-    }
-
-    // 2) Initiate ShurjoPay using server order data (reference/amount)
-    final payCtrl = Get.put(ShurjoPayController());
-    final double amountFromServer = double.tryParse(created.amount) ?? totalNow;
-
-    final init = await payCtrl.startPayment({
-      "reference": created.reference, // tie payment to server order
-      "amount": amountFromServer,
-      "currency": created.currency.isNotEmpty ? created.currency : "BDT",
-      "customer_name": customerName,
-      "customer_address": customerAddress,
-      "customer_phone": customerPhone,
-      "customer_city": customerCity,
-      "customer_post_code": customerPostCode,
-      "customer_email": customerEmail,
-    });
-
-    if (init == null || init.checkoutUrl.isEmpty) {
-      Get.snackbar(
-        'Error',
-        payCtrl.error.value.isNotEmpty
-            ? payCtrl.error.value
-            : 'Failed to start payment',
+      await _cartCtrl.addPackageToCart(
+        pkg: pkg,
+        masters: masters,
+        slaves: slaves,
       );
-      _markLocalOrderStatus(_orderCtrl, created, 'not_paid');
-      await _orderCtrl.loadOrders(userId: userId);
-      return;
-    }
 
-    final orderIdForVerify =
-        init.spOrderId.isNotEmpty
-            ? init.spOrderId
-            : init.transactionId.toString();
+      if (!mounted) return;
 
-    // 3) Open checkout — expects a Map result {kind: return|cancel|error, orderId?}
-    final result = await Get.toNamed(
-      '/checkout',
-      arguments: {
-        'checkoutUrl': init.checkoutUrl,
-        'orderId': orderIdForVerify,
-        'transactionId': init.transactionId,
-      },
-    );
-
-    print('🔁 Returned from Checkout with: $result');
-
-    // 4) Verify and show only one snackbar
-    bool paid = false;
-    String verifyId = orderIdForVerify;
-
-    if (result is Map) {
-      final kind = result['kind'];
-      if (result['orderId'] is String &&
-          (result['orderId'] as String).isNotEmpty) {
-        verifyId = result['orderId'] as String;
-      }
-
-      if (kind == 'return') {
-        final ret = await payCtrl.returnPayment(verifyId);
-        paid = ret != null && _isSuccess(ret);
-        print('🧪 Return verify: paid=$paid, sp_code=${ret?.spCode}');
-
-        if (!paid) {
-          final ver = await payCtrl.verifyPayment(verifyId);
-          paid = ver != null && _isSuccess(ver);
-          print('🧪 POST verify: paid=$paid, sp_code=${ver?.spCode}');
-        }
-      } else if (kind == 'cancel') {
-        paid = false;
-        print('🚪 User cancelled the checkout.');
-      } else if (kind == 'error') {
-        paid = false;
-        print(
-          '⚠️ Checkout error: ${result['reason']} ${result['detail'] ?? ''}',
-        );
-      }
-    } else {
-      // Fallback if older route returns bool
-      paid = (result == true);
-    }
-
-    if (paid) {
-      //_________________Notify backend about successful payment_________________//
-      try {
-        await _orderCtrl.markOrderPaid(
-          userId: userId,
-          orderId: created.id,
-          transactionId: init.transactionId.toString(),
-        );
-      } catch (e, st) {
-        // Don't break UX if notify fails; order may already be paid on backend
-        debugPrint('⚠️ markOrderPaid failed (ignored in UI): $e\n$st');
-      }
-
-      print('🔔 SNACK [Payment]: Payment successful ✅');
-
-      // ✅ Show snackbar from a safe context using ScaffoldMessenger
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Payment successful ✅'),
-            duration: Duration(seconds: 4),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Added ${_titleCase(pkg.name)} to cart.',
           ),
-        );
-      }
-      // Then navigate wherever you want, e.g. orders/history:
-      // If you were previously going to /index with a tab, keep that:
-      Get.offAllNamed('/index', arguments: {'tab': 0});
-      //Get.toNamed('/orders');
-    } else {
-      print('🔔 SNACK [Payment]: Payment cancelled/failed');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Payment failed!❌'),
-            duration: Duration(seconds: 5),
-          ),
-        );
-      }
-      _markLocalOrderStatus(_orderCtrl, created, 'not_paid');
-      await _orderCtrl.loadOrders(userId: userId);
-    }
-  }
-
-  // success iff spCode == '1000'
-  bool _isSuccess(dynamic verifyOrReturnModel) {
-    try {
-      final spCode = verifyOrReturnModel.spCode?.toString();
-      return spCode == '1000';
+          duration: const Duration(seconds: 2),
+        ),
+      );
     } catch (_) {
-      return false;
+      final msg =
+          _cartCtrl.error.value.isNotEmpty
+              ? _cartCtrl.error.value
+              : 'Failed to add item to cart.';
+      Get.snackbar('Cart', msg);
     }
   }
 
-  void _markLocalOrderStatus(
-    OrderController ctrl,
-    OrderModel created,
-    String status,
-  ) {
-    final idx = ctrl.orders.indexWhere((o) => o.id == created.id);
-    if (idx == -1) return;
-    final curr = ctrl.orders[idx];
-    ctrl.orders[idx] = OrderModel(
-      id: curr.id,
-      user: curr.user,
-      packageId: curr.packageId,
-      quantity: curr.quantity,
-      amount: curr.amount,
-      currency: curr.currency,
-      reference: curr.reference,
-      customerName: curr.customerName,
-      customerAddress: curr.customerAddress,
-      customerPhone: curr.customerPhone,
-      customerCity: curr.customerCity,
-      customerPostCode: curr.customerPostCode,
-      customerEmail: curr.customerEmail,
-      orderStatus: status,
-      gatewayTransactionId: curr.gatewayTransactionId,
-      gatewayResponse: curr.gatewayResponse,
-      shippingAddress: curr.shippingAddress,
-      numberOfMasterDevices: curr.numberOfMasterDevices,
-      numberOfSlaveDevices: curr.numberOfSlaveDevices,
-      orderedAt: curr.orderedAt,
-    );
-  }
-
-  //*___________________WIDGETS___________________*/
+  //________________________HELPERS________________________//
 
   Widget _rowIconTextValue({
     required IconData icon,

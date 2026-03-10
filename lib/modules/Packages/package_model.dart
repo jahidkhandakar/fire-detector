@@ -3,8 +3,10 @@ class PackageModel {
   final String name;
   final int minQuantity;
   final int maxQuantity;
-  final double pricePerDevice; 
-  final double mrf;           
+
+  // ✅ money fields as double (your current approach)
+  final double pricePerDevice;
+  final double mrf;
 
   PackageModel({
     required this.id,
@@ -15,11 +17,20 @@ class PackageModel {
     required this.mrf,
   });
 
-  // ✅ Computed flag for standalone packages
+  /// ✅ Standalone detection
   bool get isStandalone {
-    final n = name.toLowerCase();
-    return n.contains('standalone') || n.contains('stand-alone');
+    final n = name.toLowerCase().replaceAll(' ', '').replaceAll('-', '');
+    return n.contains('standalone');
   }
+
+  /// ✅ Mesh detection (optional but handy)
+  bool get isMesh {
+    final n = name.toLowerCase();
+    return n.contains('mesh');
+  }
+
+  /// ✅ total per device incl. mrf (handy in UI)
+  double get unitTotal => pricePerDevice + mrf;
 
   factory PackageModel.fromJson(Map<String, dynamic> json) {
     double _toDouble(dynamic v) {
@@ -28,11 +39,18 @@ class PackageModel {
       return double.tryParse(v.toString()) ?? 0.0;
     }
 
+    int _toInt(dynamic v) {
+      if (v == null) return 0;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return int.tryParse(v.toString()) ?? 0;
+    }
+
     return PackageModel(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      minQuantity: json['min_quantity'] ?? 0,
-      maxQuantity: json['max_quantity'] ?? 0,
+      id: _toInt(json['id']),
+      name: (json['name'] ?? '').toString(),
+      minQuantity: _toInt(json['min_quantity']),
+      maxQuantity: _toInt(json['max_quantity']),
       pricePerDevice: _toDouble(json['price_per_device']),
       mrf: _toDouble(json['mrf']),
     );
@@ -43,7 +61,8 @@ class PackageModel {
         'name': name,
         'min_quantity': minQuantity,
         'max_quantity': maxQuantity,
-        'price_per_device': pricePerDevice.toStringAsFixed(2),
-        'mrf': mrf.toStringAsFixed(2),
+        // keep these numeric (backend friendly)
+        'price_per_device': pricePerDevice,
+        'mrf': mrf,
       };
 }

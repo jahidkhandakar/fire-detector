@@ -11,6 +11,38 @@ class AuthHandle {
   final AuthController _authController = AuthController();
   final GetStorage _box = GetStorage();
 
+  String _extractBackendMessage(dynamic d) {
+    // 1) User-facing message from AppException
+    if (d is AppException) {
+      return d.toUserMessage();
+    }
+
+    // 2) If it's already a plain string, just use it
+    if (d is String && d.trim().isNotEmpty) {
+      return d.trim();
+    }
+
+    // 3) Normal backend JSON: must be a map
+    if (d is! Map<String, dynamic>) return '';
+
+    // Direct string fields
+    if (d['detail'] is String) return d['detail'] as String;
+    if (d['message'] is String) return d['message'] as String;
+    if (d['error'] is String) return d['error'] as String;
+
+    // Field-wise errors: first ["some message"] we find
+    for (final value in d.values) {
+      if (value is List && value.isNotEmpty && value.first is String) {
+        return value.first as String;
+      }
+      if (value is String && value.trim().isNotEmpty) {
+        return value;
+      }
+    }
+
+    return '';
+  }
+
   //* -------------------- SIGNUP (REGISTER INIT) --------------------
   /// Returns true if OTP was sent successfully
   Future<bool> signup({
@@ -65,19 +97,10 @@ class AuthHandle {
       CustomSnackbar().success('OTP sent. Please check your email/phone.');
       return true;
     } else {
-      final dynamic d = res['data'];
-      final String backendMsg =
-          (d is Map<String, dynamic>)
-              ? (d['detail']?.toString() ??
-                  d['message']?.toString() ??
-                  d['error']?.toString() ??
-                  '')
-              : '';
-
-      final errMsg =
-          backendMsg.isNotEmpty
-              ? backendMsg
-              : AppErrorMessages.authRegistrationFailed;
+      final String backendMsg = _extractBackendMessage(data);
+      final errMsg = backendMsg.isNotEmpty
+          ? backendMsg
+          : AppErrorMessages.authRegistrationFailed;
 
       CustomSnackbar().show('Registration failed', errMsg);
       return false;
@@ -149,12 +172,10 @@ class AuthHandle {
         return false;
       }
     } else {
-      final backendMsg =
-          data?['detail']?.toString() ??
-          data?['message']?.toString() ??
-          data?['error']?.toString();
-
-      final errMsg = backendMsg ?? AppErrorMessages.authVerificationFailed;
+      final backendMsg = _extractBackendMessage(data);
+      final errMsg = backendMsg.isNotEmpty
+          ? backendMsg
+          : AppErrorMessages.authVerificationFailed;
 
       CustomSnackbar().error(errMsg);
       return false;
@@ -202,12 +223,10 @@ class AuthHandle {
       CustomSnackbar().success('OTP resent. Please check your inbox.');
       return true;
     } else {
-      final backendMsg =
-          data?['detail']?.toString() ??
-          data?['message']?.toString() ??
-          data?['error']?.toString();
-
-      final errMsg = backendMsg ?? AppErrorMessages.authResendFailed;
+      final backendMsg = _extractBackendMessage(data);
+      final errMsg = backendMsg.isNotEmpty
+          ? backendMsg
+          : AppErrorMessages.authResendFailed;
 
       CustomSnackbar().error(errMsg);
       return false;
@@ -268,7 +287,7 @@ class AuthHandle {
     }
 
     // Accept both 200 and 201 as success (in case backend uses 201 for challenge)
-    if (code >= 200 && code <= 300 ) {
+    if (code >= 200 && code <= 300) {
       final sessionId = data['session_id']?.toString();
       final otpSentTo = data['otp_sent_to']?.toString();
 
@@ -288,11 +307,10 @@ class AuthHandle {
       CustomSnackbar().success('OTP sent. Please check your phone/email.');
       return true;
     } else {
-      final String msg =
-          (data['detail']?.toString() ??
-              data['message']?.toString() ??
-              data['error']?.toString() ??
-              AppErrorMessages.authLoginFailed);
+      final backendMsg = _extractBackendMessage(data);
+      final msg = backendMsg.isNotEmpty
+          ? backendMsg
+          : AppErrorMessages.authLoginFailed;
 
       debugPrint('AuthHandle.login -> failed ($code): $msg');
       CustomSnackbar().error(msg);
@@ -361,12 +379,10 @@ class AuthHandle {
         return false;
       }
     } else {
-      final backendMsg =
-          data?['detail']?.toString() ??
-          data?['message']?.toString() ??
-          data?['error']?.toString();
-
-      final errMsg = backendMsg ?? AppErrorMessages.authVerificationFailed;
+      final backendMsg = _extractBackendMessage(data);
+      final errMsg = backendMsg.isNotEmpty
+          ? backendMsg
+          : AppErrorMessages.authVerificationFailed;
 
       CustomSnackbar().error(errMsg);
       return false;
@@ -407,12 +423,10 @@ class AuthHandle {
       CustomSnackbar().success('OTP resent. Please check your phone/email.');
       return true;
     } else {
-      final backendMsg =
-          data?['detail']?.toString() ??
-          data?['message']?.toString() ??
-          data?['error']?.toString();
-
-      final errMsg = backendMsg ?? AppErrorMessages.authResendFailed;
+      final backendMsg = _extractBackendMessage(data);
+      final errMsg = backendMsg.isNotEmpty
+          ? backendMsg
+          : AppErrorMessages.authResendFailed;
 
       CustomSnackbar().error(errMsg);
       return false;
@@ -459,19 +473,10 @@ class AuthHandle {
       CustomSnackbar().success('OTP sent. Please check your email/phone.');
       return true;
     } else {
-      final dynamic d = res['data'];
-      final String backendMsg =
-          (d is Map<String, dynamic>)
-              ? (d['detail']?.toString() ??
-                  d['message']?.toString() ??
-                  d['error']?.toString() ??
-                  '')
-              : '';
-
-      final errMsg =
-          backendMsg.isNotEmpty
-              ? backendMsg
-              : AppErrorMessages.authForgotInitFailed;
+      final backendMsg = _extractBackendMessage(data);
+      final errMsg = backendMsg.isNotEmpty
+          ? backendMsg
+          : AppErrorMessages.authForgotInitFailed;
 
       CustomSnackbar().error(errMsg);
       return false;
@@ -528,19 +533,10 @@ class AuthHandle {
       CustomSnackbar().success('Password reset successful. Please login.');
       return true;
     } else {
-      final dynamic d = data;
-      final String backendMsg =
-          (d is Map<String, dynamic>)
-              ? (d['detail']?.toString() ??
-                  d['message']?.toString() ??
-                  d['error']?.toString() ??
-                  '')
-              : '';
-
-      final errMsg =
-          backendMsg.isNotEmpty
-              ? backendMsg
-              : AppErrorMessages.authForgotCompleteFailed;
+      final backendMsg = _extractBackendMessage(data);
+      final errMsg = backendMsg.isNotEmpty
+          ? backendMsg
+          : AppErrorMessages.authForgotCompleteFailed;
 
       CustomSnackbar().error(errMsg);
       return false;
@@ -595,19 +591,10 @@ class AuthHandle {
       CustomSnackbar().success('Password changed successfully.');
       return true;
     } else {
-      final dynamic d = data;
-      final String backendMsg =
-          (d is Map<String, dynamic>)
-              ? (d['detail']?.toString() ??
-                  d['message']?.toString() ??
-                  d['error']?.toString() ??
-                  '')
-              : '';
-
-      final errMsg =
-          backendMsg.isNotEmpty
-              ? backendMsg
-              : AppErrorMessages.authChangePasswordFailed;
+      final backendMsg = _extractBackendMessage(data);
+      final errMsg = backendMsg.isNotEmpty
+          ? backendMsg
+          : AppErrorMessages.authChangePasswordFailed;
 
       CustomSnackbar().error(errMsg);
       return false;

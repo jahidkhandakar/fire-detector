@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:fire_alarm/modules/about/about_page.dart';
+import 'package:fire_alarm/modules/cart/cart_page.dart';
 import 'package:fire_alarm/modules/faq/faq_page.dart';
 import 'package:fire_alarm/modules/subscription/subscription_page.dart';
 import 'package:fire_alarm/screens/forgot_password_screen.dart';
@@ -77,7 +78,8 @@ class FireAlarm extends StatelessWidget {
         GetPage(name: '/faq', page: () => FaqPage()),
         GetPage(name: '/forgot-password', page: () => ForgotPasswordScreen()),
         GetPage(name: '/login-otp', page: () => LoginOtpScreen()),
-        GetPage(name: '/sub', page: () => SubscriptionPage())
+        GetPage(name: '/sub', page: () => SubscriptionPage()),
+        GetPage(name: '/cart', page: () => CartPage()),
       ],
     );
   }
